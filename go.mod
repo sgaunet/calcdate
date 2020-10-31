@@ -1,3 +1,3 @@
-module sgaunet/calcdate
+module github.com/sgaunet/calcdate
 
 go 1.15
