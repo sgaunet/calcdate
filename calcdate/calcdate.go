@@ -358,8 +358,13 @@ func CreateDate(adate string, ifmt string, tz string, begindate bool, enddate bo
 // DoubleReplace replaces keyword by a string representing a scanfformat (like %2d)
 // in the string fmtstr. Finally the scanfformat is expandined to data
 func DoubleReplace(fmtstr string, keyword string, scanfformat string, data int) string {
-	res := strings.ReplaceAll(fmtstr, keyword, scanfformat)
-	return fmt.Sprintf(res, data)
+	res := fmtstr
+	if strings.ContainsAny(fmtstr, keyword) {
+		res = strings.ReplaceAll(fmtstr, keyword, scanfformat)
+		res = fmt.Sprintf(res, data)
+	}
+
+	return res
 }
 
 // ApplyFormat return a string representing the date date formtted by fmtstr

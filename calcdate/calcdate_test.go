@@ -188,6 +188,22 @@ func TestApplyFormat2(t *testing.T) {
 	}
 }
 
+func TestApplyFormat3(t *testing.T) {
+	tz := "Local"
+	ifmt := "YYYY/MM/DD"
+	ofmt := "YYYY-MM-DD"
+
+	begindate, err := CreateDate("//", ifmt, tz, true, false)
+	if err != nil {
+		t.Error("Error CreateDAte")
+	}
+	begind := ApplyFormat(ofmt, begindate)
+	if len(begind) != 10 {
+		t.Error(begind)
+		t.Error("Error Applyformat")
+	}
+}
+
 func TestMain(m *testing.M) {
 	//config.TestDatabaseInit()
 	fmt.Println("test main")
