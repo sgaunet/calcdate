@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"sgaunet/calcdate/calcdate"
 	"time"
+
+	"github.com/sgaunet/calcdate/calcdate"
 )
 
 func completeDate(adate string) (resDate string) {
