@@ -51,3 +51,13 @@ $ date && ./calcdate -b :-1: -tz UTC
 lun. 14 sept. 2020 23:19:08 CEST
 2020/09/14 21:18:08
 ```
+
+
+# Make a release
+
+```
+git tag -a v0.1.0 -m "First release"
+git push origin v0.1.0
+goreleaser --snapshot  # Check
+goreleaser 
+```
