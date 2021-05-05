@@ -204,6 +204,20 @@ func TestApplyFormat3(t *testing.T) {
 	}
 }
 
+func TestDoubleReplace(t *testing.T) {
+	res := DoubleReplace("YYYY/MM/DD", "YYYY", "%04d", 2021)
+	if res != "2021/MM/DD" {
+		t.Error("Error DoubleReplace")
+	}
+}
+
+func TestDoubleReplace2(t *testing.T) {
+	res := DoubleReplace("YYYY/MM/DD", "HH", "%02d", 10)
+	if res != "YYYY/MM/DD" {
+		t.Error("Error DoubleReplace")
+	}
+}
+
 func TestMain(m *testing.M) {
 	//config.TestDatabaseInit()
 	fmt.Println("test main")
