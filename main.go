@@ -44,8 +44,8 @@ func main() {
 	}
 
 	// If date is like :: or //
-	begindate = completeDate(begindate)
-	enddate = completeDate(enddate)
+	//begindate = completeDate(begindate)
+	//enddate = completeDate(enddate)
 
 	begintime, err = calcdate.CreateDate(begindate, ifmt, tz, false, false)
 	if err != nil {
