@@ -25,9 +25,16 @@ func completeDate(adate string) (resDate string) {
 	return
 }
 
+var version string = "development"
+
+func printVersion() {
+	fmt.Println(version)
+}
+
 func main() {
 	var begindate, enddate, separator, ifmt, ofmt, tz string
 	var endtime, begintime time.Time
+	var vOption bool
 	var err error
 	var rangeDate bool = false
 
@@ -37,7 +44,13 @@ func main() {
 	flag.StringVar(&tz, "tz", "Local", "Timezone")
 	flag.StringVar(&ifmt, "ifmt", "YYYY/MM/DD hh:mm:ss", "Input Format (YYYY/MM/DD hh:mm:ss)")
 	flag.StringVar(&ofmt, "ofmt", "YYYY/MM/DD hh:mm:ss", "Input Format (YYYY/MM/DD hh:mm:ss)")
+	flag.BoolVar(&vOption, "v", false, "Get version")
 	flag.Parse()
+
+	if vOption {
+		printVersion()
+		os.Exit(0)
+	}
 
 	if enddate != "" && begindate != "" {
 		rangeDate = true
