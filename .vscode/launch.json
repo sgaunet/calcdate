@@ -11,7 +11,7 @@
             "mode": "auto",
             "program": "main.go",
             "env": {},
-            "args": ["-b" ,"//-1","-ifmt",'"YYYY/MM/DD'","-ofmt",'"YYYY/MM/DD'" ]
+            "args": ["-b" ,"//-1","-ofmt","%YYYY/%MM/%DD" ]
         }
     ]
 }

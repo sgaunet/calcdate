@@ -8,37 +8,37 @@ import (
 )
 
 func TestCheckDateFormat1(t *testing.T) {
-	if !CheckDateFormat("-1982/05/12 12:00:01", "YYYY/MM/DD hh:mm:ss") {
+	if !CheckDateFormat("-1982/05/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date format is acceptable")
 	}
 }
 
 func TestCheckDateFormat2(t *testing.T) {
-	if !CheckDateFormat("1982/05/12 12:00:01", "YYYY/MM/DD hh:mm:ss") {
+	if !CheckDateFormat("1982/05/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date has a good format")
 	}
 }
 
 func TestCheckDateFormat3(t *testing.T) {
-	if CheckDateFormat("1982/13/12 12:00:01", "YYYY/MM/DD hh:mm:ss") {
+	if CheckDateFormat("1982/13/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date has a wrong format")
 	}
 }
 
 func TestCheckDateFormat4(t *testing.T) {
-	if CheckDateFormat("1982/12/32 12:00:01", "YYYY/MM/DD hh:mm:ss") {
+	if CheckDateFormat("1982/12/32 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date has a wrong format")
 	}
 }
 
 func TestCheckDateFormat5(t *testing.T) {
-	if CheckDateFormat("1982/12/31 102:00:01", "YYYY/MM/DD hh:mm:ss") {
+	if CheckDateFormat("1982/12/31 102:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date has a wrong format")
 	}
 }
 
 func TestCheckDateFormat6(t *testing.T) {
-	if !CheckDateFormat("//-10 ::", "YYYY/MM/DD hh:mm:ss") {
+	if !CheckDateFormat("//-10 ::", "%YYYY/%MM/%DD %hh:%mm:%ss") {
 		t.Error("Date has a wrong format")
 	}
 }
@@ -50,13 +50,13 @@ func TestCreeDateVide(t *testing.T) {
 }
 
 func TestCreeDate1(t *testing.T) {
-	if _, err := CreateDate("2020/08/22 18:00:", "YYYY/MM/DD hh:mm:ss", "UTC", false, false); err != nil {
+	if _, err := CreateDate("2020/08/22 18:00:", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err != nil {
 		t.Error("Should be ok")
 	}
 }
 
 func TestCreateDate(t *testing.T) {
-	if _, err := CreateDate("2020/13/22 18:00", "YYYY/MM/DD hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("2020/13/22 18:00", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("Month doesn't exist")
 	}
 }
@@ -68,48 +68,48 @@ func TestCreeDate3(t *testing.T) {
 }
 
 func TestCreeDate4(t *testing.T) {
-	if _, err := CreateDate("// ::", "YYYY/MM/SS hh:mm:ss", "UTC", true, false); err != nil {
+	if _, err := CreateDate("// ::", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", true, false); err != nil {
 		t.Error("CreeDate now")
 	}
 }
 
 func TestCreeDate5(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:-1:-1", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err != nil {
+	if _, err := CreateDate("-1/-1/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err != nil {
 		t.Error("CreeDate -1/-1/-1 -1:-1:-1")
 	}
 }
 
 func TestCreeDate6(t *testing.T) {
-	if _, err := CreateDate("a/-1/-1 -1:-1:-1", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("a/-1/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate a/-1/-1 -1:-1:-1")
 	}
 }
 
 func TestCreeDate7(t *testing.T) {
-	if _, err := CreateDate("-1/m/-1 -1:-1:-1", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("-1/m/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate -1/m/-1 -1:-1:-1")
 	}
 }
 
 func TestCreeDate8(t *testing.T) {
-	if _, err := CreateDate("-1/-1/j -1:-1:-1", "YYYY/MM/DD hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("-1/-1/j -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate -1/-1/j -1:-1:-1")
 	}
 }
 
 func TestCreeDate9(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 HH:-1:-1", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("-1/-1/-1 HH:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate -1/-1/-1 HH:-1:-1")
 	}
 }
 
 func TestCreeDate10(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:MM:-1", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("-1/-1/-1 -1:MM:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate -1/-1/-1 -1:MM:-1")
 	}
 }
 func TestCreeDate11(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:-1:SS", "YYYY/MM/SS hh:mm:ss", "UTC", false, false); err == nil {
+	if _, err := CreateDate("-1/-1/-1 -1:-1:SS", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
 		t.Error("CreeDate -1/-1/-1 -1:-1:SS")
 	}
 }
@@ -145,7 +145,7 @@ func TestCreeDate16(t *testing.T) {
 }
 
 func TestCreeDateWrongTZ(t *testing.T) {
-	if _, err := CreateDate("// ::", "YYYY/MM/SS hh:mm:ss", "UTC456", false, false); err == nil {
+	if _, err := CreateDate("// ::", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC456", false, false); err == nil {
 		t.Error("TZ is wrong")
 	}
 }
@@ -170,7 +170,7 @@ func TestDayInMonth3(t *testing.T) {
 
 func TestApplyFormat1(t *testing.T) {
 	var now = time.Now()
-	fmtstr := "YYYY/MM/DD hh:mm:ss"
+	fmtstr := "%YYYY/%MM/%DD %hh:%mm:%ss"
 	res := ApplyFormat(fmtstr, now)
 	resWanted := fmt.Sprintf("%d/%02d/%02d %02d:%02d:%02d", now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
 	if res != resWanted {
@@ -180,7 +180,7 @@ func TestApplyFormat1(t *testing.T) {
 
 func TestApplyFormat2(t *testing.T) {
 	var now = time.Now()
-	fmtstr := "YYYY/DD/MM mm:hh:ss"
+	fmtstr := "%YYYY/%DD/%MM %mm:%hh:%ss"
 	res := ApplyFormat(fmtstr, now)
 	resWanted := fmt.Sprintf("%d/%02d/%02d %02d:%02d:%02d", now.Year(), now.Day(), int(now.Month()), now.Minute(), now.Hour(), now.Second())
 	if res != resWanted {
@@ -190,8 +190,8 @@ func TestApplyFormat2(t *testing.T) {
 
 func TestApplyFormat3(t *testing.T) {
 	tz := "Local"
-	ifmt := "YYYY/MM/DD"
-	ofmt := "YYYY-MM-DD"
+	ifmt := "%YYYY/%MM/%DD"
+	ofmt := "%YYYY-%MM-%DD"
 
 	begindate, err := CreateDate("//", ifmt, tz, true, false)
 	if err != nil {
@@ -205,8 +205,8 @@ func TestApplyFormat3(t *testing.T) {
 }
 
 func TestDoubleReplace(t *testing.T) {
-	res := DoubleReplace("YYYY/MM/DD", "YYYY", "%04d", 2021)
-	if res != "2021/MM/DD" {
+	res := DoubleReplace("%YYYY/%MM/%DD", "%YYYY", "%04d", 2021)
+	if res != "2021/%MM/%DD" {
 		t.Error("Error DoubleReplace")
 	}
 }
@@ -215,6 +215,33 @@ func TestDoubleReplace2(t *testing.T) {
 	res := DoubleReplace("YYYY/MM/DD", "HH", "%02d", 10)
 	if res != "YYYY/MM/DD" {
 		t.Error("Error DoubleReplace")
+	}
+}
+
+func TestConvertStdFormatToGolang(t *testing.T) {
+	res := convertStdFormatToGolang("%YYYY %MM %DD %hh %mm %ss")
+	if res != "2006 01 02 15 04 05" {
+		t.Error("Error in function convertStdFormatToGolang")
+	}
+}
+
+func TestCalcLine1(t *testing.T) {
+	b := time.Date(2022, 1, 2, 12, 35, 54, 0, time.UTC)
+	e := time.Date(2023, 2, 3, 13, 36, 55, 0, time.UTC)
+	res := CalcLine("{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .EndTime.Unix }}", b, e)
+	if res != "2022/01/02 12:35:54 1675431415" {
+		t.Error(res)
+		t.Error("Error CalcLine")
+	}
+}
+
+func TestCalcLine2(t *testing.T) {
+	b := time.Date(2022, 1, 2, 12, 35, 54, 0, time.UTC)
+	e := time.Date(2023, 2, 3, 13, 36, 55, 0, time.UTC)
+	res := CalcLine("{{ (MinusOneSecond .EndTime).Unix }}", b, e)
+	if res != "1675431414" {
+		t.Error(res)
+		t.Error("Error CalcLine")
 	}
 }
 

@@ -1,8 +1,10 @@
 package calcdate
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"html/template"
 	"regexp"
 	"strconv"
 	"strings"
@@ -64,12 +66,12 @@ func CheckDateFormat(adate string, format string) bool {
 		return false
 	}
 
-	indexYear := IndexArray(fmtDate, "YYYY")
-	indexMonth := IndexArray(fmtDate, "MM")
-	indexDay := IndexArray(fmtDate, "DD")
-	indexHour := IndexArray(fmtDate, "hh")
-	indexMinute := IndexArray(fmtDate, "mm")
-	indexSecond := IndexArray(fmtDate, "ss")
+	indexYear := IndexArray(fmtDate, "%YYYY")
+	indexMonth := IndexArray(fmtDate, "%MM")
+	indexDay := IndexArray(fmtDate, "%DD")
+	indexHour := IndexArray(fmtDate, "%hh")
+	indexMinute := IndexArray(fmtDate, "%mm")
+	indexSecond := IndexArray(fmtDate, "%ss")
 
 	if indexYear != -1 && len(tabDate[indexYear]) != 0 {
 		// Pas de mention de YYYY dans le format
@@ -220,12 +222,12 @@ func CreateDate(adate string, ifmt string, tz string, begindate bool, enddate bo
 	tabDate := SplitDate(adate)
 	fmtDate := SplitDate(ifmt)
 
-	indexYear := IndexArray(fmtDate, "YYYY")
-	indexMonth := IndexArray(fmtDate, "MM")
-	indexDay := IndexArray(fmtDate, "DD")
-	indexHour := IndexArray(fmtDate, "hh")
-	indexMinute := IndexArray(fmtDate, "mm")
-	indexSecond := IndexArray(fmtDate, "ss")
+	indexYear := IndexArray(fmtDate, "%YYYY")
+	indexMonth := IndexArray(fmtDate, "%MM")
+	indexDay := IndexArray(fmtDate, "%DD")
+	indexHour := IndexArray(fmtDate, "%hh")
+	indexMinute := IndexArray(fmtDate, "%mm")
+	indexSecond := IndexArray(fmtDate, "%ss")
 
 	year = time.Now().Year()
 	if indexYear != -1 {
@@ -358,10 +360,11 @@ func CreateDate(adate string, ifmt string, tz string, begindate bool, enddate bo
 // DoubleReplace replaces keyword by a string representing a scanfformat (like %2d)
 // in the string fmtstr. Finally the scanfformat is expandined to data
 func DoubleReplace(fmtstr string, keyword string, scanfformat string, data int) string {
+	finalValue := fmt.Sprintf(scanfformat, data)
 	res := fmtstr
 	if strings.ContainsAny(fmtstr, keyword) {
-		res = strings.ReplaceAll(fmtstr, keyword, scanfformat)
-		res = fmt.Sprintf(res, data)
+		res = strings.ReplaceAll(fmtstr, keyword, finalValue)
+		// res = fmt.Sprintf(res, data)
 	}
 
 	return res
@@ -370,11 +373,53 @@ func DoubleReplace(fmtstr string, keyword string, scanfformat string, data int) 
 // ApplyFormat return a string representing the date date formtted by fmtstr
 // Fields recognized : YYYY MM DD hh mm ss
 func ApplyFormat(fmtstr string, date time.Time) string {
-	res := DoubleReplace(fmtstr, "YYYY", "%4d", date.Year())
-	res = DoubleReplace(res, "MM", "%02d", int(date.Month()))
-	res = DoubleReplace(res, "DD", "%02d", date.Day())
-	res = DoubleReplace(res, "hh", "%02d", date.Hour())
-	res = DoubleReplace(res, "mm", "%02d", date.Minute())
-	res = DoubleReplace(res, "ss", "%02d", date.Second())
+	res := DoubleReplace(fmtstr, "%YYYY", "%4d", date.Year())
+	res = DoubleReplace(res, "%MM", "%02d", int(date.Month()))
+	res = DoubleReplace(res, "%DD", "%02d", date.Day())
+	res = DoubleReplace(res, "%hh", "%02d", date.Hour())
+	res = DoubleReplace(res, "%mm", "%02d", date.Minute())
+	res = DoubleReplace(res, "%ss", "%02d", date.Second())
+	// res = strings.ReplaceAll(res, "@ts", strconv.FormatInt(date.Unix(), 10))
 	return res
+}
+
+func convertStdFormatToGolang(str string) string {
+	res := strings.ReplaceAll(str, "%YYYY", "2006")
+	res = strings.ReplaceAll(res, "%MM", "01")
+	res = strings.ReplaceAll(res, "%DD", "02")
+	res = strings.ReplaceAll(res, "%hh", "15")
+	res = strings.ReplaceAll(res, "%mm", "04")
+	res = strings.ReplaceAll(res, "%ss", "05")
+	return res
+}
+
+func CalcLine(tmpl string, beginTime time.Time, endTime time.Time) string {
+	type dataDate struct {
+		BeginTime time.Time
+		EndTime   time.Time
+	}
+
+	d := dataDate{
+		BeginTime: beginTime,
+		EndTime:   endTime,
+	}
+	temapltestr := convertStdFormatToGolang(tmpl)
+
+	t, err := template.New("calcline").Funcs(template.FuncMap{
+		"MinusOneSecond": func(t time.Time) time.Time {
+			return t.Add(-1 * time.Second)
+		},
+	}).Parse(temapltestr)
+	if err != nil {
+		panic(err)
+	}
+
+	var doc bytes.Buffer
+	err = t.Execute(&doc, d)
+	s := doc.String()
+	// err = t.Execute(os.Stdout, d)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
