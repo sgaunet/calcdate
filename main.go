@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sgaunet/calcdate/calcdate"
+	"github.com/sgaunet/calcdate/calcdatelib"
 )
 
 func completeDate(adate string) (resDate string) {
@@ -70,29 +70,29 @@ func main() {
 	begindate = completeDate(begindate)
 	enddate = completeDate(enddate)
 
-	beginTime, err = calcdate.CreateDate(begindate, ifmt, tz, false, false)
+	beginTime, err = calcdatelib.CreateDate(begindate, ifmt, tz, false, false)
 	if err != nil {
 		fmt.Println("Format date begindate KO")
 		os.Exit(1)
 	}
 
 	if rangeDate {
-		beginTime, err = calcdate.CreateDate(begindate, ifmt, tz, true, false)
-		endTime, err = calcdate.CreateDate(enddate, ifmt, tz, false, true)
+		beginTime, err = calcdatelib.CreateDate(begindate, ifmt, tz, true, false)
+		endTime, err = calcdatelib.CreateDate(enddate, ifmt, tz, false, true)
 		if err != nil {
 			fmt.Println("Format date enddate KO")
 			os.Exit(1)
 		}
 		if interval == 0 {
 			// Print range
-			fmt.Printf("%s%s%s\n", calcdate.ApplyFormat(ofmt, beginTime), separator, calcdate.ApplyFormat(ofmt, endTime))
+			fmt.Printf("%s%s%s\n", calcdatelib.ApplyFormat(ofmt, beginTime), separator, calcdatelib.ApplyFormat(ofmt, endTime))
 		} else {
 			// calc range with interval
 			tmpInterval := beginTime
 			tmpEndInterval := beginTime
 			for tmpInterval.Before(endTime) {
 				tmpEndInterval = tmpInterval.Add(interval)
-				l := calcdate.CalcLine(tmpl, tmpInterval, tmpEndInterval)
+				l := calcdatelib.CalcLine(tmpl, tmpInterval, tmpEndInterval)
 				res := strings.Split(l, "\n")
 				for _, val := range res {
 					fmt.Println(val)
@@ -101,6 +101,6 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Println(calcdate.ApplyFormat(ofmt, beginTime))
+		fmt.Println(calcdatelib.ApplyFormat(ofmt, beginTime))
 	}
 }

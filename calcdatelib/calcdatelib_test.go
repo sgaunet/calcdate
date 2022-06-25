@@ -1,4 +1,4 @@
-package calcdate
+package calcdatelib
 
 import (
 	"fmt"
