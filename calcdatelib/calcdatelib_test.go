@@ -7,241 +7,361 @@ import (
 	"time"
 )
 
-func TestCheckDateFormat1(t *testing.T) {
-	if !CheckDateFormat("-1982/05/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date format is acceptable")
+func TestCheckDateFormat(t *testing.T) {
+	type testCase struct {
+		Name               string
+		argDate            string
+		argFormat          string
+		expectedValidation bool
+		expectedErr        bool
+	}
+
+	checkDateFormatTestCases := []testCase{
+		{
+			Name:               "test ok",
+			argDate:            "1982/05/12 12:00:01",
+			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
+			expectedValidation: true,
+			expectedErr:        false,
+		},
+		{
+			Name:               "test ok",
+			argDate:            "12/01/1 12:00:01",
+			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
+			expectedValidation: true,
+			expectedErr:        false,
+		},
+		{
+			Name:               "relative ok",
+			argDate:            "-1982/-05/-12 -12:-00:-01",
+			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
+			expectedValidation: true,
+			expectedErr:        false,
+		},
+		{
+			Name:               "wrong format",
+			argDate:            "-1982/-05/-12 -12:-00:-01",
+			argFormat:          "%YYYY/%MM %hh:%mm:%ss",
+			expectedValidation: false,
+			expectedErr:        false,
+		},
+	}
+
+	for _, test := range checkDateFormatTestCases {
+		t.Run(test.Name, func(t *testing.T) {
+			d, _ := NewDate("// ::", test.argFormat, "")
+			val, err := d.checkDateFormat(test.argDate, test.argFormat)
+			if val != test.expectedValidation {
+				t.Errorf("case %s in error", test.Name)
+			}
+			isError := err != nil
+			if (isError) != test.expectedErr {
+				t.Errorf("case %s in error", test.Name)
+			}
+		})
 	}
 }
 
-func TestCheckDateFormat2(t *testing.T) {
-	if !CheckDateFormat("1982/05/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date has a good format")
+func TestNewDate(t *testing.T) {
+	type testCase struct {
+		Name           string
+		argDate        string
+		argIfmt        string
+		argTz          string
+		expectedString string
+		expectedErr    bool
+	}
+
+	minNowMinus1 := time.Now().Minute() - 1
+	if minNowMinus1 == -1 {
+		minNowMinus1 = 59
+	}
+	hourNowMinus1 := time.Now().Hour() - 1
+	if hourNowMinus1 == -1 {
+		hourNowMinus1 = 23
+	}
+	testCases := []testCase{
+		{
+			Name:           "min=59",
+			argDate:        fmt.Sprintf("2022/05/11 02:%d:50", -time.Now().Minute()-1),
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "UTC",
+			expectedString: "2022/05/11 01:59:50",
+			expectedErr:    false,
+		},
+		{
+			Name:           "wrong tz",
+			argDate:        "1982/05/12 12:00:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "%YYYY/%MM/%DD %hh:%mm:%ss",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "ok",
+			argDate:        "1982/05/12 12:00:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1982/05/12 12:00:01",
+			expectedErr:    false,
+		},
+		{
+			Name:           "ok",
+			argDate:        "1982/05/12 12:-1:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: fmt.Sprintf("1982/05/12 12:%02d:01", minNowMinus1),
+			expectedErr:    false,
+		},
+		{
+			Name:           "ok",
+			argDate:        "1982/05/12 -1:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: fmt.Sprintf("1982/05/12 %02d:01:01", hourNowMinus1),
+			expectedErr:    false,
+		},
+		{
+			Name:           "year ko",
+			argDate:        "year/05/12 -1:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "month ko",
+			argDate:        "2020/month/12 -1:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "day ko",
+			argDate:        "2020/05/day -1:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "hour ko",
+			argDate:        "2020/05/12 hour:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "min ko",
+			argDate:        "2020/05/12 -1:min:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "sec ko",
+			argDate:        "2020/05/12 -1:01:sec",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "tz ko",
+			argDate:        "2020/05/12 -1:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "tz",
+			expectedString: "",
+			expectedErr:    true,
+		},
+		{
+			Name:           "tz ok",
+			argDate:        "2020/05/12 15:01:01",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "Europe/Paris",
+			expectedString: "2020/05/12 15:01:01",
+			expectedErr:    false,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.Name, func(t *testing.T) {
+			d, err := NewDate(test.argDate, test.argIfmt, test.argTz)
+			isError := err != nil
+			if (isError) != test.expectedErr {
+				t.Errorf("case %s in error", test.Name)
+			}
+			if d != nil {
+				if d.String() != test.expectedString {
+					t.Errorf("case %s in error", test.Name)
+				}
+			}
+		})
 	}
 }
 
-func TestCheckDateFormat3(t *testing.T) {
-	if CheckDateFormat("1982/13/12 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date has a wrong format")
+func TestTime(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/London")
+	ex := time.Date(2003, time.Month(3), 02, 10, 20, 30, 0, loc)
+	d, _ := NewDate("2003/3/2 10:20:30", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+	if ex.Unix() != d.Time().Unix() {
+		t.Errorf("Time should be same")
 	}
 }
 
-func TestCheckDateFormat4(t *testing.T) {
-	if CheckDateFormat("1982/12/32 12:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date has a wrong format")
+func TestBefore(t *testing.T) {
+	d, _ := NewDate("2003/3/2 10:20:30", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+	after, _ := NewDate("2003/3/2 10:20:31", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+	if !d.Before(after) {
+		t.Error("d < after")
+	}
+	if d.Before(d) {
+		t.Error("same date")
 	}
 }
 
-func TestCheckDateFormat5(t *testing.T) {
-	if CheckDateFormat("1982/12/31 102:00:01", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date has a wrong format")
+func TestAdd(t *testing.T) {
+	d, _ := NewDate("2003/3/2 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+	res, _ := NewDate("2003/3/3 00:00:00", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+	d.Add(time.Second)
+	if d.Before(res) {
+		t.Error("same date")
+	}
+	if res.Before(d) {
+		t.Error("same date")
 	}
 }
 
-func TestCheckDateFormat6(t *testing.T) {
-	if !CheckDateFormat("//-10 ::", "%YYYY/%MM/%DD %hh:%mm:%ss") {
-		t.Error("Date has a wrong format")
+func TestSetBeginDate(t *testing.T) {
+	type testCase struct {
+		argDate        string
+		expectedResult string
+	}
+
+	tests := []testCase{
+		{
+			argDate:        "2003/3/2 23:59:45",
+			expectedResult: "2003/03/02 23:59:45",
+		},
+		{
+			argDate:        "2003/3/2 23:59:",
+			expectedResult: "2003/03/02 23:59:00",
+		},
+		{
+			argDate:        "2003/3/2 23::",
+			expectedResult: "2003/03/02 23:00:00",
+		},
+		{
+			argDate:        "2003/3/2 ::",
+			expectedResult: "2003/03/02 00:00:00",
+		},
+		{
+			argDate:        "2003/3/ ::",
+			expectedResult: "2003/03/01 00:00:00",
+		},
+		{
+			argDate:        "2003// ::",
+			expectedResult: "2003/01/01 00:00:00",
+		},
+		{
+			argDate:        "// ::",
+			expectedResult: fmt.Sprintf("%d/01/01 00:00:00", time.Now().Year()),
+		},
+	}
+
+	for test := range tests {
+		d, _ := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		d.SetBeginDate()
+		if d.String() != tests[test].expectedResult {
+			t.Errorf("wrong result=%s  expected=%s", d.String(), tests[test].expectedResult)
+		}
 	}
 }
 
-func TestCreeDateVide(t *testing.T) {
-	if _, err := CreateDate("", "", "", true, false); err == nil {
-		t.Error("Should be wrong, empty date given")
+func TestSetEndDate(t *testing.T) {
+	type testCase struct {
+		argDate        string
+		expectedResult string
+	}
+
+	tests := []testCase{
+		{
+			argDate:        "2003/3/2 21:50:45",
+			expectedResult: "2003/03/02 21:50:45",
+		},
+		{
+			argDate:        "2003/3/2 21:50:",
+			expectedResult: "2003/03/02 21:50:59",
+		},
+		{
+			argDate:        "2003/3/2 21::",
+			expectedResult: "2003/03/02 21:59:59",
+		},
+		{
+			argDate:        "2003/3/2 ::",
+			expectedResult: "2003/03/02 23:59:59",
+		},
+		{
+			argDate:        "2003/3/ ::",
+			expectedResult: "2003/03/31 23:59:59",
+		},
+		{
+			argDate:        "2003// ::",
+			expectedResult: "2003/12/31 23:59:59",
+		},
+		{
+			argDate:        "// ::",
+			expectedResult: fmt.Sprintf("%d/12/31 23:59:59", time.Now().Year()),
+		},
+	}
+
+	for test := range tests {
+		d, _ := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		d.SetEndDate()
+		if d.String() != tests[test].expectedResult {
+			t.Errorf("wrong result=%s  expected=%s", d.String(), tests[test].expectedResult)
+		}
 	}
 }
 
-func TestCreeDate1(t *testing.T) {
-	if _, err := CreateDate("2020/08/22 18:00:", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err != nil {
-		t.Error("Should be ok")
+func TestFormat(t *testing.T) {
+	type testCase struct {
+		Name           string
+		argFormat      string
+		expectedString string
 	}
-}
 
-func TestCreateDate(t *testing.T) {
-	if _, err := CreateDate("2020/13/22 18:00", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("Month doesn't exist")
+	argDate := "1982/05/12 12:00:01"
+	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
+	argTz := "UTC"
+	d, _ := NewDate(argDate, argIfmt, argTz)
+	testCases := []testCase{
+		{
+			Name:           "like ifmt",
+			argFormat:      "%YYYY/%MM/%DD %hh:%mm:%ss",
+			expectedString: "1982/05/12 12:00:01",
+		},
+		{
+			Name:           "just year",
+			argFormat:      "%YYYY",
+			expectedString: "1982",
+		},
+		{
+			Name:           "wrong format",
+			argFormat:      "%YYY/%M/%D %h:%m:%s",
+			expectedString: "%YYY/%M/%D %h:%m:%s",
+		},
 	}
-}
 
-func TestCreeDate3(t *testing.T) {
-	if _, err := CreateDate("2020/08/22 18:00", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("ifmt is not good")
-	}
-}
-
-func TestCreeDate4(t *testing.T) {
-	if _, err := CreateDate("// ::", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", true, false); err != nil {
-		t.Error("CreeDate now")
-	}
-}
-
-func TestCreeDate5(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err != nil {
-		t.Error("CreeDate -1/-1/-1 -1:-1:-1")
-	}
-}
-
-func TestCreeDate6(t *testing.T) {
-	if _, err := CreateDate("a/-1/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate a/-1/-1 -1:-1:-1")
-	}
-}
-
-func TestCreeDate7(t *testing.T) {
-	if _, err := CreateDate("-1/m/-1 -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate -1/m/-1 -1:-1:-1")
-	}
-}
-
-func TestCreeDate8(t *testing.T) {
-	if _, err := CreateDate("-1/-1/j -1:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate -1/-1/j -1:-1:-1")
-	}
-}
-
-func TestCreeDate9(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 HH:-1:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate -1/-1/-1 HH:-1:-1")
-	}
-}
-
-func TestCreeDate10(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:MM:-1", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate -1/-1/-1 -1:MM:-1")
-	}
-}
-func TestCreeDate11(t *testing.T) {
-	if _, err := CreateDate("-1/-1/-1 -1:-1:SS", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC", false, false); err == nil {
-		t.Error("CreeDate -1/-1/-1 -1:-1:SS")
-	}
-}
-
-func TestCreeDate12(t *testing.T) {
-	if _, err := CreateDate("2020/14/22 18:00", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("Month is incorrect")
-	}
-}
-
-func TestCreeDate13(t *testing.T) {
-	if _, err := CreateDate("2020/12/32 18:00", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("Day is incorrect")
-	}
-}
-
-func TestCreeDate14(t *testing.T) {
-	if _, err := CreateDate("2020/10/22 28:00", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("Hour is incorrect")
-	}
-}
-
-func TestCreeDate15(t *testing.T) {
-	if _, err := CreateDate("2020/11/22 18:60", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("Month is incorrect")
-	}
-}
-
-func TestCreeDate16(t *testing.T) {
-	if _, err := CreateDate("2020/10/22 18:00:60", "YYYY/MM/ hh:mm:ss", "UTC", false, false); err == nil {
-		t.Error("Second is incorrect")
-	}
-}
-
-func TestCreeDateWrongTZ(t *testing.T) {
-	if _, err := CreateDate("// ::", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC456", false, false); err == nil {
-		t.Error("TZ is wrong")
-	}
-}
-
-func TestDayInMonth1(t *testing.T) {
-	if DayInMonth(2020, 1) != 31 {
-		t.Error("01/2020 => 31 days VS", DayInMonth(2020, 1))
-	}
-}
-
-func TestDayInMonth2(t *testing.T) {
-	if DayInMonth(2020, 2) != 29 {
-		t.Error("02/2020 => 29 days VS", DayInMonth(2020, 2))
-	}
-}
-
-func TestDayInMonth3(t *testing.T) {
-	if DayInMonth(2020, 12) != 31 {
-		t.Error("02/2020 => 31 days VS", DayInMonth(2020, 12))
-	}
-}
-
-func TestApplyFormat1(t *testing.T) {
-	var now = time.Now()
-	fmtstr := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	res := ApplyFormat(fmtstr, now)
-	resWanted := fmt.Sprintf("%d/%02d/%02d %02d:%02d:%02d", now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
-	if res != resWanted {
-		t.Error("Error Applyformat")
-	}
-}
-
-func TestApplyFormat2(t *testing.T) {
-	var now = time.Now()
-	fmtstr := "%YYYY/%DD/%MM %mm:%hh:%ss"
-	res := ApplyFormat(fmtstr, now)
-	resWanted := fmt.Sprintf("%d/%02d/%02d %02d:%02d:%02d", now.Year(), now.Day(), int(now.Month()), now.Minute(), now.Hour(), now.Second())
-	if res != resWanted {
-		t.Error("Error Applyformat")
-	}
-}
-
-func TestApplyFormat3(t *testing.T) {
-	tz := "Local"
-	ifmt := "%YYYY/%MM/%DD"
-	ofmt := "%YYYY-%MM-%DD"
-
-	begindate, err := CreateDate("//", ifmt, tz, true, false)
-	if err != nil {
-		t.Error("Error CreateDAte")
-	}
-	begind := ApplyFormat(ofmt, begindate)
-	if len(begind) != 10 {
-		t.Error(begind)
-		t.Error("Error Applyformat")
-	}
-}
-
-func TestDoubleReplace(t *testing.T) {
-	res := DoubleReplace("%YYYY/%MM/%DD", "%YYYY", "%04d", 2021)
-	if res != "2021/%MM/%DD" {
-		t.Error("Error DoubleReplace")
-	}
-}
-
-func TestDoubleReplace2(t *testing.T) {
-	res := DoubleReplace("YYYY/MM/DD", "HH", "%02d", 10)
-	if res != "YYYY/MM/DD" {
-		t.Error("Error DoubleReplace")
-	}
-}
-
-func TestConvertStdFormatToGolang(t *testing.T) {
-	res := convertStdFormatToGolang("%YYYY %MM %DD %hh %mm %ss")
-	if res != "2006 01 02 15 04 05" {
-		t.Error("Error in function convertStdFormatToGolang")
-	}
-}
-
-func TestCalcLine1(t *testing.T) {
-	b := time.Date(2022, 1, 2, 12, 35, 54, 0, time.UTC)
-	e := time.Date(2023, 2, 3, 13, 36, 55, 0, time.UTC)
-	res := CalcLine("{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .EndTime.Unix }}", b, e)
-	if res != "2022/01/02 12:35:54 1675431415" {
-		t.Error(res)
-		t.Error("Error CalcLine")
-	}
-}
-
-func TestCalcLine2(t *testing.T) {
-	b := time.Date(2022, 1, 2, 12, 35, 54, 0, time.UTC)
-	e := time.Date(2023, 2, 3, 13, 36, 55, 0, time.UTC)
-	res := CalcLine("{{ (MinusOneSecond .EndTime).Unix }}", b, e)
-	if res != "1675431414" {
-		t.Error(res)
-		t.Error("Error CalcLine")
+	for _, test := range testCases {
+		t.Run(test.Name, func(t *testing.T) {
+			if d.Format(test.argFormat) != test.expectedString {
+				t.Errorf("case %s in error: result=%s expected=%s", test.Name, d.Format(test.argFormat), test.expectedString)
+			}
+		})
 	}
 }
 

@@ -13,13 +13,13 @@ import (
 
 func completeDate(adate string) (resDate string) {
 	resDate = adate
-	r, _ := regexp.Compile("^(\\+|-)*[0-9]*:(\\+|-)*[0-9]*:(\\+|-)*[0-9]*$")
+	r := regexp.MustCompile("^(\\+|-)*[0-9]*:(\\+|-)*[0-9]*:(\\+|-)*[0-9]*$")
 	if r.MatchString(resDate) {
 		resDate = fmt.Sprintf("// %s", resDate)
 	}
 
 	// If date is like "//"
-	r, _ = regexp.Compile("^(\\+|-)*[0-9]*/(\\+|-)*[0-9]*/(\\+|-)*[0-9]*$")
+	r = regexp.MustCompile("^(\\+|-)*[0-9]*/(\\+|-)*[0-9]*/(\\+|-)*[0-9]*$")
 	if r.MatchString(resDate) {
 		resDate = fmt.Sprintf("%s ::", resDate)
 	}
@@ -34,7 +34,7 @@ func printVersion() {
 
 func main() {
 	var begindate, enddate, separator, ifmt, ofmt, tz string
-	var endTime, beginTime time.Time
+	// var endTime, beginTime time.Time
 	var vOption bool
 	var interval time.Duration
 	var tmpl string
@@ -70,37 +70,47 @@ func main() {
 	begindate = completeDate(begindate)
 	enddate = completeDate(enddate)
 
-	beginTime, err = calcdatelib.CreateDate(begindate, ifmt, tz, false, false)
+	beginTime, err := calcdatelib.NewDate(begindate, ifmt, tz)
 	if err != nil {
 		fmt.Println("Format date begindate KO")
 		os.Exit(1)
 	}
 
 	if rangeDate {
-		beginTime, err = calcdatelib.CreateDate(begindate, ifmt, tz, true, false)
-		endTime, err = calcdatelib.CreateDate(enddate, ifmt, tz, false, true)
+		beginTime, err = calcdatelib.NewDate(begindate, ifmt, tz)
 		if err != nil {
-			fmt.Println("Format date enddate KO")
+			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
+		endTime, err := calcdatelib.NewDate(enddate, ifmt, tz)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		endTime.SetEndDate()
+		beginTime.SetBeginDate()
 		if interval == 0 {
 			// Print range
-			fmt.Printf("%s%s%s\n", calcdatelib.ApplyFormat(ofmt, beginTime), separator, calcdatelib.ApplyFormat(ofmt, endTime))
+			fmt.Printf("%s%s%s\n", beginTime.Format(ofmt), separator, endTime.Format(ofmt))
 		} else {
 			// calc range with interval
-			tmpInterval := beginTime
-			tmpEndInterval := beginTime
+			tmpInterval, _ := calcdatelib.NewDate(begindate, ifmt, tz)    // no need to control err again
+			tmpEndInterval, _ := calcdatelib.NewDate(begindate, ifmt, tz) // no need to control err again
 			for tmpInterval.Before(endTime) {
-				tmpEndInterval = tmpInterval.Add(interval)
-				l := calcdatelib.CalcLine(tmpl, tmpInterval, tmpEndInterval)
+				tmpEndInterval.Add(interval)
+				l, err := calcdatelib.RenderTemplate(tmpl, tmpInterval.Time(), tmpEndInterval.Time())
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err.Error())
+					os.Exit(1)
+				}
 				res := strings.Split(l, "\n")
 				for _, val := range res {
 					fmt.Println(val)
 				}
-				tmpInterval = tmpInterval.Add(interval)
+				tmpInterval.Add(interval)
 			}
 		}
 	} else {
-		fmt.Println(calcdatelib.ApplyFormat(ofmt, beginTime))
+		fmt.Println(beginTime.Format(ofmt))
 	}
 }

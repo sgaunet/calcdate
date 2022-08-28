@@ -11,7 +11,8 @@
             "mode": "auto",
             "program": "main.go",
             "env": {},
-            "args": ["-b" ,"//-1","-ofmt","%YYYY/%MM/%DD" ]
+            "args": [ "-b" ,":-5:" ,"-e" ,":-1:" ]
+            // "args": [ "-b", "2022/01/07 20:50:00", "-e", "2022/01/08 00:30:00",   "-i", "5m", "-tmpl", "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }} --- {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }}" ]
         }
     ]
 }

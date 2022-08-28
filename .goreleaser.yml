@@ -60,3 +60,13 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
+brews:
+  - homepage: 'https://github.com/sgaunet/homebrew-tools'
+    folder: Formula
+    commit_author:
+      name: sgaunet
+      email: sgaunet@gmail.com
+    tap:
+      owner: sgaunet
+      name: homebrew-tools

@@ -119,11 +119,3 @@ $ calcdate -b "2022/01/07 20:50:00" -e "2022/01/08 00:30:00"   -i 5m -tmpl "{{ .
 2022/01/08 00:25:00 - 2022/01/08 00:30:00 1641597900 1641598200 ---  00:29:59 
 ```
 
-# Make a release
-
-```
-git tag -a v0.1.0 -m "First release"
-git push origin v0.1.0
-goreleaser --snapshot  # Check
-goreleaser 
-```
