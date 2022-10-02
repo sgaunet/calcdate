@@ -367,3 +367,11 @@ func (d *Date) SetEndDate() *Date {
 	}
 	return d
 }
+
+func GetInterval(d1 *Date, d2 *Date) time.Duration {
+	diff := d1.Time().Sub(d2.Time())
+	if diff > 0 {
+		return diff
+	}
+	return -diff
+}

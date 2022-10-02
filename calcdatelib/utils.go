@@ -141,3 +141,19 @@ func DiffInDays(start time.Time, end time.Time) int {
 func IsLeapYear(year int) bool {
 	return year%4 == 0 && year%100 != 0 || year%400 == 0
 }
+
+func RenderIntervalLines(beginDate Date, endDate Date, interval time.Duration, tmpl string) (res []string, err error) {
+	tmpInterval := beginDate
+	tmpEndInterval := tmpInterval
+	for tmpInterval.Before(&endDate) {
+		tmpEndInterval.Add(interval)
+		l, err := RenderTemplate(tmpl, tmpInterval.Time(), tmpEndInterval.Time())
+		if err != nil {
+			return res, err
+		}
+		results := strings.Split(l, "\n")
+		res = append(res, results...)
+		tmpInterval.Add(interval)
+	}
+	return
+}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/sgaunet/calcdate/calcdatelib"
@@ -93,22 +92,15 @@ func main() {
 			// Print range
 			fmt.Printf("%s%s%s\n", beginTime.Format(ofmt), separator, endTime.Format(ofmt))
 		} else {
-			// calc range with interval
-			tmpInterval, _ := calcdatelib.NewDate(begindate, ifmt, tz)    // no need to control err again
-			tmpEndInterval, _ := calcdatelib.NewDate(begindate, ifmt, tz) // no need to control err again
-			for tmpInterval.Before(endTime) {
-				tmpEndInterval.Add(interval)
-				l, err := calcdatelib.RenderTemplate(tmpl, tmpInterval.Time(), tmpEndInterval.Time())
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err.Error())
-					os.Exit(1)
-				}
-				res := strings.Split(l, "\n")
-				for _, val := range res {
-					fmt.Println(val)
-				}
-				tmpInterval.Add(interval)
+			intervals, err := calcdatelib.RenderIntervalLines(*beginTime, *endTime, interval, tmpl)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				os.Exit(1)
 			}
+			for idx := range intervals {
+				fmt.Println(intervals[idx])
+			}
+
 		}
 	} else {
 		fmt.Println(beginTime.Format(ofmt))

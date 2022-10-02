@@ -372,3 +372,51 @@ func TestMain(m *testing.M) {
 	//config.TestDatabaseDestroy()
 	os.Exit(ret)
 }
+
+func TestGetInterval(t *testing.T) {
+	ifmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
+	d1, _ := NewDate("// :-5:", ifmt, "")
+	d2, _ := NewDate("// ::", ifmt, "")
+	d3, _ := NewDate("// :-1:", ifmt, "")
+	type args struct {
+		d1 *Date
+		d2 *Date
+	}
+	tests := []struct {
+		name string
+		args args
+		want time.Duration
+	}{
+		{
+			name: "5 min",
+			args: args{
+				d1: d1,
+				d2: d2,
+			},
+			want: 5 * time.Minute,
+		},
+		{
+			name: "4 min",
+			args: args{
+				d1: d1,
+				d2: d3,
+			},
+			want: 4 * time.Minute,
+		},
+		{
+			name: "1 min",
+			args: args{
+				d1: d3,
+				d2: d2,
+			},
+			want: 1 * time.Minute,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetInterval(tt.args.d1, tt.args.d2); got != tt.want {
+				t.Errorf("GetInterval() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
