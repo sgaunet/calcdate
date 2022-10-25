@@ -144,9 +144,9 @@ func IsLeapYear(year int) bool {
 
 func RenderIntervalLines(beginDate Date, endDate Date, interval time.Duration, tmpl string) (res []string, err error) {
 	tmpInterval := beginDate
-	tmpEndInterval := tmpInterval
 	for tmpInterval.Before(&endDate) {
-		tmpEndInterval.Add(interval)
+		tmpEndInterval := tmpInterval
+		tmpEndInterval.Add(interval - time.Second)
 		l, err := RenderTemplate(tmpl, tmpInterval.Time(), tmpEndInterval.Time())
 		if err != nil {
 			return res, err
