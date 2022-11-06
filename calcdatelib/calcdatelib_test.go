@@ -7,61 +7,6 @@ import (
 	"time"
 )
 
-func TestCheckDateFormat(t *testing.T) {
-	type testCase struct {
-		Name               string
-		argDate            string
-		argFormat          string
-		expectedValidation bool
-		expectedErr        bool
-	}
-
-	checkDateFormatTestCases := []testCase{
-		{
-			Name:               "test ok",
-			argDate:            "1982/05/12 12:00:01",
-			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
-			expectedValidation: true,
-			expectedErr:        false,
-		},
-		{
-			Name:               "test ok",
-			argDate:            "12/01/1 12:00:01",
-			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
-			expectedValidation: true,
-			expectedErr:        false,
-		},
-		{
-			Name:               "relative ok",
-			argDate:            "-1982/-05/-12 -12:-00:-01",
-			argFormat:          "%YYYY/%MM/%DD %hh:%mm:%ss",
-			expectedValidation: true,
-			expectedErr:        false,
-		},
-		{
-			Name:               "wrong format",
-			argDate:            "-1982/-05/-12 -12:-00:-01",
-			argFormat:          "%YYYY/%MM %hh:%mm:%ss",
-			expectedValidation: false,
-			expectedErr:        false,
-		},
-	}
-
-	for _, test := range checkDateFormatTestCases {
-		t.Run(test.Name, func(t *testing.T) {
-			d, _ := NewDate("// ::", test.argFormat, "")
-			val, err := d.checkDateFormat(test.argDate, test.argFormat)
-			if val != test.expectedValidation {
-				t.Errorf("case %s in error", test.Name)
-			}
-			isError := err != nil
-			if (isError) != test.expectedErr {
-				t.Errorf("case %s in error", test.Name)
-			}
-		})
-	}
-}
-
 func TestNewDate(t *testing.T) {
 	type testCase struct {
 		Name           string
@@ -103,6 +48,22 @@ func TestNewDate(t *testing.T) {
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
 			expectedString: "1982/05/12 12:00:01",
+			expectedErr:    false,
+		},
+		{
+			Name:           "ifmt %YYYY-%MM-%DD %hh:%mm:%ss",
+			argDate:        "1982-05-12 12:00:01",
+			argIfmt:        "%YYYY-%MM-%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1982/05/12 12:00:01",
+			expectedErr:    false,
+		},
+		{
+			Name:           "ifmt %hh:%mm:%ss",
+			argDate:        "12:00:01 120ert12ert29",
+			argIfmt:        "%hh:%mm:%ss %YYYYert%MMert%DD",
+			argTz:          "",
+			expectedString: "0120/12/29 12:00:01",
 			expectedErr:    false,
 		},
 		{
@@ -185,6 +146,14 @@ func TestNewDate(t *testing.T) {
 			expectedString: "2020/05/12 15:01:01",
 			expectedErr:    false,
 		},
+		{
+			Name:           "different format",
+			argDate:        "2020-05-12 15:01:01",
+			argIfmt:        "%YYYY-%MM-%DD %hh:%mm:%ss",
+			argTz:          "Europe/Paris",
+			expectedString: "2020/05/12 15:01:01",
+			expectedErr:    false,
+		},
 	}
 
 	for _, test := range testCases {
@@ -193,10 +162,12 @@ func TestNewDate(t *testing.T) {
 			isError := err != nil
 			if (isError) != test.expectedErr {
 				t.Errorf("case %s in error", test.Name)
+				t.Errorf("expectedString=%s VS result=%s", test.expectedString, d.String())
 			}
 			if d != nil {
 				if d.String() != test.expectedString {
 					t.Errorf("case %s in error", test.Name)
+					t.Errorf("expectedString=%s VS result=%s", test.expectedString, d.String())
 				}
 			}
 		})
@@ -273,7 +244,10 @@ func TestSetBeginDate(t *testing.T) {
 	}
 
 	for test := range tests {
-		d, _ := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		d, err := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		if err != nil {
+			t.Errorf(err.Error())
+		}
 		d.SetBeginDate()
 		if d.String() != tests[test].expectedResult {
 			t.Errorf("wrong result=%s  expected=%s", d.String(), tests[test].expectedResult)

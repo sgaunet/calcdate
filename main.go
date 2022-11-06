@@ -12,13 +12,13 @@ import (
 
 func completeDate(adate string) (resDate string) {
 	resDate = adate
-	r := regexp.MustCompile("^(\\+|-)*[0-9]*:(\\+|-)*[0-9]*:(\\+|-)*[0-9]*$")
+	r := regexp.MustCompile(`^(\+|-)*[0-9]*:(\+|-)*[0-9]*:(\+|-)*[0-9]*$`)
 	if r.MatchString(resDate) {
 		resDate = fmt.Sprintf("// %s", resDate)
 	}
 
 	// If date is like "//"
-	r = regexp.MustCompile("^(\\+|-)*[0-9]*/(\\+|-)*[0-9]*/(\\+|-)*[0-9]*$")
+	r = regexp.MustCompile(`^(\+|-)*[0-9]*/(\+|-)*[0-9]*/(\+|-)*[0-9]*$`)
 	if r.MatchString(resDate) {
 		resDate = fmt.Sprintf("%s ::", resDate)
 	}
@@ -65,7 +65,7 @@ func main() {
 		fmt.Println("specify a range date")
 		os.Exit(1)
 	}
-	// If date is like :: or //
+	// If date is like :: or //  TODO control the format
 	begindate = completeDate(begindate)
 	enddate = completeDate(enddate)
 
@@ -100,7 +100,6 @@ func main() {
 			for idx := range intervals {
 				fmt.Println(intervals[idx])
 			}
-
 		}
 	} else {
 		fmt.Println(beginTime.Format(ofmt))

@@ -1,0 +1,95 @@
+name: Exec testsuite
+
+testcases:
+- name: no option
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . > /tmp/1
+      date "+%Y/%m/%d %H:%M:%S" > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: complex ifmt
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "qsdf 1982 mois 05 jour 12 h 15 m 18 s 56" -ifmt "qsdf %YYYY mois %MM jour %DD h %hh m %mm s %ss" > /tmp/1
+      echo "1982/05/12 15:18:56" > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: begin and enddate
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b ":-5:" -e ":-1:"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: test option -i
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2000/01/01 00:00:00" -e "2000/01/01 01:00:00" -i 5m > /tmp/1
+      diff -q /tmp/1 e2etests/res-interval.txt
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: test option -i 
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2022/02/27 00:00:00" -e "2022/03/01 01:00:00" -i 5m > /tmp/1
+      diff -q /tmp/1 e2etests/res-interval-2.txt
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: 1 day ago
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "//-1" > /tmp/1
+      date "+%Y/%m/%d %H:%M:%S" -d "1 day ago" > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: begin and end date
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -s "' and '" -b ":-5:" -e ":-1:" > /tmp/1
+      echo "$(date "+%Y/%m/%d %H:%M:00" -d "5 min ago")' and '$(date "+%Y/%m/%d %H:%M:59" -d "1 min ago")"  > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: 1 year ago
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "-1//" > /tmp/1
+      date "+%Y/%m/%d %H:%M:%S" -d "1 year ago" > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: delete temporary files
+  steps:
+  - type: exec
+    script: |
+      rm /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+

@@ -2,36 +2,12 @@ package calcdatelib
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
 )
-
-// calculateUnitOfTime returns defaultValue if partDate is empty
-// If partDate have the sign - or plus, it will return defaultValue +/- partDate
-func calculateUnitOfTime(partDate string, defaultValue int) (value int, err error) {
-	r := regexp.MustCompile(`(\+|-){1}[0-9]+`)
-	value = defaultValue
-
-	if r.MatchString(partDate) {
-		// number has + or -, so it's a relative time
-		change, err := strconv.Atoi(partDate)
-		if err != nil {
-			return value, err
-		}
-		return defaultValue + change, nil
-	} else {
-		if len(partDate) != 0 {
-			value, err = strconv.Atoi(partDate)
-			return
-		} else {
-			return defaultValue, nil
-		}
-	}
-}
 
 // doubleReplace replaces keyword by a string representing a scanfformat (like %2d)
 // in the string fmtstr. Finally the scanfformat is expandined to data
@@ -55,26 +31,34 @@ func convertStdFormatToGolang(str string) string {
 	return res
 }
 
-// splitDate split a string which has format like // ::
-func splitDate(ddate string) []string {
-	var strsplit []string
-
-	for _, v := range strings.Split(ddate, " ") {
-		for _, w := range strings.Split(v, ":") {
-			strsplit = append(strsplit, strings.Split(w, "/")...)
-		}
-	}
-	return strsplit
+func createRegexpFromIfmt(ifmt string) string {
+	r := strings.ReplaceAll(ifmt, "%YYYY", "(?P<Year>([\\+-]?\\d+)?)")
+	r = strings.ReplaceAll(r, "%MM", `(?P<Month>([\+-]?\d+)?)`)
+	r = strings.ReplaceAll(r, "%DD", `(?P<Day>([\+-]?\d+)?)`)
+	r = strings.ReplaceAll(r, "%hh", `(?P<Hour>([\+-]?\d+)?)`)
+	r = strings.ReplaceAll(r, "%mm", `(?P<Minute>([\+-]?\d+)?)`)
+	r = strings.ReplaceAll(r, "%ss", `(?P<Second>([\+-]?\d+)?)`)
+	r = fmt.Sprintf("^%s$", r)
+	return r
 }
 
-// indexArray search a value in an array of string and returns its index
-func indexArray(array []string, searchValue string) int {
-	for index, value := range array {
-		if value == searchValue {
-			return index
+// findIndexOf search a value in an array of string and returns its index
+func (d *Date) findIndexOf(searchGroup string) (int, error) {
+	var idxFound int
+	for index, value := range d.subExpNames {
+		if value == searchGroup {
+			idxFound = index
 		}
 	}
-	return -1
+	if len(d.submatch) < idxFound {
+		return -1, errors.New("format is not the same")
+	}
+	if len(d.submatch) != 0 {
+		if len(d.submatch[idxFound]) != 0 {
+			return idxFound, nil
+		}
+	}
+	return -1, nil
 }
 
 // DayInMonth returns the number of days in the month/year given in parameters
