@@ -394,3 +394,79 @@ func TestGetInterval(t *testing.T) {
 		})
 	}
 }
+
+func TestDate_SetEndMonth(t *testing.T) {
+	tests := []struct {
+		name string
+		date string
+		want time.Time
+	}{
+		{
+			name: "end of february",
+			date: "2022/02/05 01:02:03",
+			want: time.Date(2022, 2, 28, 23, 59, 59, 0, time.UTC),
+		},
+		{
+			name: "end of february",
+			date: "2022/02/05 ::",
+			want: time.Date(2022, 2, 28, 23, 59, 59, 0, time.UTC),
+		},
+		{
+			name: "end of december",
+			date: "2022/12/05 01:02:03",
+			want: time.Date(2022, 12, 31, 23, 59, 59, 0, time.UTC),
+		},
+		{
+			name: "end of january",
+			date: "2022/01/05 01:02:03",
+			want: time.Date(2022, 1, 31, 23, 59, 59, 0, time.UTC),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, _ := NewDate(tt.date, "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+			result := d.SetEndMonth().Time()
+			if result != tt.want {
+				t.Errorf("Date.SetEndMonth() = %v, want %v", result, tt.want)
+			}
+		})
+	}
+}
+
+func TestDate_SetBeginMonth(t *testing.T) {
+	tests := []struct {
+		name string
+		date string
+		want time.Time
+	}{
+		{
+			name: "begin of february",
+			date: "2022/02/05 01:02:03",
+			want: time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "begin of december",
+			date: "2022/12/05 01:02:03",
+			want: time.Date(2022, 12, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "begin of january",
+			date: "2022/01/05 01:02:03",
+			want: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "begin of january",
+			date: "2022/01/05 ::",
+			want: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, _ := NewDate(tt.date, "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+			result := d.SetBeginMonth().Time()
+			if result != tt.want {
+				t.Errorf("Date.SetBeginMonth() = %v, want %v", result, tt.want)
+			}
+		})
+	}
+}

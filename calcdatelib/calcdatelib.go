@@ -311,6 +311,28 @@ func (d *Date) SetEndDate() *Date {
 	return d
 }
 
+func (d *Date) SetEndMonth() *Date {
+	d.second = 59
+	d.minute = 59
+	d.hour = 23
+	if d.month == 0 {
+		d.month = 12
+	}
+	d.day = DayInMonth(d.year, d.month)
+	return d
+}
+
+func (d *Date) SetBeginMonth() *Date {
+	d.second = 0
+	d.minute = 0
+	d.hour = 0
+	d.day = 1
+	if d.month == 0 {
+		d.month = 1
+	}
+	return d
+}
+
 func GetInterval(d1 *Date, d2 *Date) time.Duration {
 	diff := d1.Time().Sub(d2.Time())
 	if diff > 0 {
