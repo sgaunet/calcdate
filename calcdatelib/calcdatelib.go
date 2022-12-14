@@ -333,6 +333,43 @@ func (d *Date) SetBeginMonth() *Date {
 	return d
 }
 
+func (d *Date) AddMonth(n int) *Date {
+	d.year = d.year + (n / 12)
+	if d.month+(n%12) > 12 {
+		d.year++
+		d.month = d.month + (n % 12) - 12
+	} else {
+		d.month += n
+	}
+	daysInMonth := DayInMonth(d.year, d.month)
+	if d.day > daysInMonth {
+		d.day = daysInMonth
+	}
+	return d
+}
+
+func (d *Date) AddYear(n int) *Date {
+	new := d.Time().AddDate(n, 0, 0)
+	d.year = new.Year()
+	d.month = int(new.Month())
+	d.day = new.Day()
+	d.hour = new.Hour()
+	d.minute = new.Minute()
+	d.second = new.Second()
+	return d
+}
+
+func (d *Date) AddDay(n int) *Date {
+	new := d.Time().AddDate(0, 0, n)
+	d.year = new.Year()
+	d.month = int(new.Month())
+	d.day = new.Day()
+	d.hour = new.Hour()
+	d.minute = new.Minute()
+	d.second = new.Second()
+	return d
+}
+
 func GetInterval(d1 *Date, d2 *Date) time.Duration {
 	diff := d1.Time().Sub(d2.Time())
 	if diff > 0 {

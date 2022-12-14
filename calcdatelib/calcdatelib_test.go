@@ -470,3 +470,60 @@ func TestDate_SetBeginMonth(t *testing.T) {
 		})
 	}
 }
+
+func TestDate_AddMonth(t *testing.T) {
+	firstJanuary, _ := NewDate("2022/01/01 00:00:00", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	firstJanuaryWantedResult, _ := NewDate("2022/02/01 00:00:00", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endFeb, _ := NewDate("2020/02/29 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endFebWantedResult, _ := NewDate("2020/03/29 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endJan, _ := NewDate("2020/01/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endJanWantedResult, _ := NewDate("2020/02/29 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endMar, _ := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endMarWantedResult, _ := NewDate("2020/04/30 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endMar2, _ := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	endMarWantedResult2, _ := NewDate("2021/02/28 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	tests := []struct {
+		name       string
+		ddate      *Date
+		monthToAdd int
+		want       *Date
+	}{
+		{
+			name:       "First january",
+			ddate:      firstJanuary,
+			monthToAdd: 1,
+			want:       firstJanuaryWantedResult,
+		},
+		{
+			name:       "end feb",
+			ddate:      endFeb,
+			monthToAdd: 1,
+			want:       endFebWantedResult,
+		},
+		{
+			name:       "end jan",
+			ddate:      endJan,
+			monthToAdd: 1,
+			want:       endJanWantedResult,
+		},
+		{
+			name:       "end Mar",
+			ddate:      endMar,
+			monthToAdd: 1,
+			want:       endMarWantedResult,
+		},
+		{
+			name:       "end Mar2",
+			ddate:      endMar2,
+			monthToAdd: 11,
+			want:       endMarWantedResult2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.ddate.AddMonth(tt.monthToAdd); got.String() != tt.want.String() {
+				t.Errorf("Date.AddMonth() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
