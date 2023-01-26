@@ -13,6 +13,11 @@ tasks:
     generates:
       - "{{.BINFILE}}"
 
+  tests:
+    dir: e2etests
+    cmds:
+      - venom run testsuite.yml --output-dir log
+
   snapshot:
     cmds:
       - GITLAB_TOKEN="" goreleaser --rm-dist --snapshot
