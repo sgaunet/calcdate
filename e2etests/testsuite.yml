@@ -63,6 +63,17 @@ testcases:
     assertions:
     - result.code ShouldEqual 0
 
+- name: 1 day ago interval
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "//-1" -e "//-1" > /tmp/1
+      echo "$(date "+%Y/%m/%d 00:00:00" -d "1 day ago") $(date "+%Y/%m/%d 23:59:59" -d "1 day ago")" > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
 - name: begin and end date
   steps:
   - type: exec
