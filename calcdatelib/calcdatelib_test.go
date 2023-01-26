@@ -13,28 +13,23 @@ func TestNewDate(t *testing.T) {
 		argDate        string
 		argIfmt        string
 		argTz          string
+		nowFct         func() time.Time
 		expectedString string
 		expectedErr    bool
 	}
 
-	minNowMinus1 := time.Now().Minute() - 1
-	if minNowMinus1 == -1 {
-		minNowMinus1 = 59
-	}
-	hourNowMinus1 := time.Now().Hour() - 1
-	if hourNowMinus1 == -1 {
-		hourNowMinus1 = 23
-	}
 	testCases := []testCase{
 		{
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 			Name:           "min=59",
-			argDate:        fmt.Sprintf("2022/05/11 02:%d:50", -time.Now().Minute()-1),
+			argDate:        "2022/05/11 02:-2:50",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "UTC",
 			expectedString: "2022/05/11 01:59:50",
 			expectedErr:    false,
 		},
 		{
+			nowFct:         time.Now,
 			Name:           "wrong tz",
 			argDate:        "1982/05/12 12:00:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
@@ -43,6 +38,7 @@ func TestNewDate(t *testing.T) {
 			expectedErr:    true,
 		},
 		{
+			nowFct:         time.Now,
 			Name:           "ok",
 			argDate:        "1982/05/12 12:00:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
@@ -51,6 +47,7 @@ func TestNewDate(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
+			nowFct:         time.Now,
 			Name:           "ifmt %YYYY-%MM-%DD %hh:%mm:%ss",
 			argDate:        "1982-05-12 12:00:01",
 			argIfmt:        "%YYYY-%MM-%DD %hh:%mm:%ss",
@@ -60,6 +57,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "ifmt %hh:%mm:%ss",
+			nowFct:         time.Now,
 			argDate:        "12:00:01 120ert12ert29",
 			argIfmt:        "%hh:%mm:%ss %YYYYert%MMert%DD",
 			argTz:          "",
@@ -67,23 +65,26 @@ func TestNewDate(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 10, 50, 0, time.UTC) }, // 2020-05-11 02:10:50
 			Name:           "ok",
 			argDate:        "1982/05/12 12:-1:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
-			expectedString: fmt.Sprintf("1982/05/12 12:%02d:01", minNowMinus1),
+			expectedString: "1982/05/12 12:09:01",
 			expectedErr:    false,
 		},
 		{
 			Name:           "ok",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 10, 50, 0, time.UTC) }, // 2020-05-11 02:10:50
 			argDate:        "1982/05/12 -1:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
-			expectedString: fmt.Sprintf("1982/05/12 %02d:01:01", hourNowMinus1),
+			expectedString: "1982/05/12 01:01:01",
 			expectedErr:    false,
 		},
 		{
 			Name:           "year ko",
+			nowFct:         time.Now,
 			argDate:        "year/05/12 -1:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -92,6 +93,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "month ko",
+			nowFct:         time.Now,
 			argDate:        "2020/month/12 -1:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -100,6 +102,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "day ko",
+			nowFct:         time.Now,
 			argDate:        "2020/05/day -1:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -108,6 +111,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "hour ko",
+			nowFct:         time.Now,
 			argDate:        "2020/05/12 hour:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -116,6 +120,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "min ko",
+			nowFct:         time.Now,
 			argDate:        "2020/05/12 -1:min:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -124,6 +129,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "sec ko",
+			nowFct:         time.Now,
 			argDate:        "2020/05/12 -1:01:sec",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "",
@@ -132,6 +138,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "tz ko",
+			nowFct:         time.Now,
 			argDate:        "2020/05/12 -1:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "tz",
@@ -140,6 +147,7 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "tz ok",
+			nowFct:         time.Now,
 			argDate:        "2020/05/12 15:01:01",
 			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
 			argTz:          "Europe/Paris",
@@ -148,17 +156,63 @@ func TestNewDate(t *testing.T) {
 		},
 		{
 			Name:           "different format",
+			nowFct:         time.Now,
 			argDate:        "2020-05-12 15:01:01",
 			argIfmt:        "%YYYY-%MM-%DD %hh:%mm:%ss",
 			argTz:          "Europe/Paris",
 			expectedString: "2020/05/12 15:01:01",
 			expectedErr:    false,
 		},
+		{
+			Name:           "minus one second",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "1982/01/01 00:00:-1",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1981/12/31 23:59:59",
+			expectedErr:    false,
+		},
+		{
+			Name:           "minus one minute",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "1982/01/01 00:-1:00",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1981/12/31 23:59:00",
+			expectedErr:    false,
+		},
+		{
+			Name:           "minus one hour",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "1982/01/01 -1:00:00",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1981/12/31 23:00:00",
+			expectedErr:    false,
+		},
+		{
+			Name:           "minus one day",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "1982/01/-1 00:00:00",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1981/12/31 00:00:00",
+			expectedErr:    false,
+		},
+		{
+			Name:           "minus one month",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "1982/-1/01 13:00:00",
+			argIfmt:        "%YYYY/%MM/%DD %hh:%mm:%ss",
+			argTz:          "",
+			expectedString: "1981/12/01 13:00:00",
+			expectedErr:    false,
+		},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.Name, func(t *testing.T) {
-			d, err := NewDate(test.argDate, test.argIfmt, test.argTz)
+			d, err := newDateWithSpecificNowFct(test.argDate, test.argIfmt, test.argTz, test.nowFct)
 			isError := err != nil
 			if (isError) != test.expectedErr {
 				t.Errorf("case %s in error", test.Name)
@@ -210,41 +264,74 @@ func TestSetBeginDate(t *testing.T) {
 	type testCase struct {
 		argDate        string
 		expectedResult string
+		nowFct         func() time.Time
 	}
 
 	tests := []testCase{
 		{
 			argDate:        "2003/3/2 23:59:45",
 			expectedResult: "2003/03/02 23:59:45",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 23:59:",
 			expectedResult: "2003/03/02 23:59:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 23::",
 			expectedResult: "2003/03/02 23:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 ::",
 			expectedResult: "2003/03/02 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/ ::",
 			expectedResult: "2003/03/01 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003// ::",
 			expectedResult: "2003/01/01 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "// ::",
-			expectedResult: fmt.Sprintf("%d/01/01 00:00:00", time.Now().Year()),
+			expectedResult: "2020/01/01 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// ::-30",
+			expectedResult: "2020/05/11 02:01:20",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// :-2:",
+			expectedResult: "2020/05/11 01:59:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// -3::",
+			expectedResult: "2020/05/10 23:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "//-11 ::",
+			expectedResult: "2020/04/30 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "/-5/ ::",
+			expectedResult: "2019/12/01 00:00:00",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 	}
 
 	for test := range tests {
-		d, err := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		d, err := newDateWithSpecificNowFct(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London", tests[test].nowFct)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -259,41 +346,84 @@ func TestSetEndDate(t *testing.T) {
 	type testCase struct {
 		argDate        string
 		expectedResult string
+		nowFct         func() time.Time
 	}
 
 	tests := []testCase{
 		{
 			argDate:        "2003/3/2 21:50:45",
 			expectedResult: "2003/03/02 21:50:45",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 21:50:",
 			expectedResult: "2003/03/02 21:50:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 21::",
 			expectedResult: "2003/03/02 21:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/2 ::",
 			expectedResult: "2003/03/02 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003/3/ ::",
 			expectedResult: "2003/03/31 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "2003// ::",
 			expectedResult: "2003/12/31 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "/10/ ::",
+			expectedResult: "2020/10/31 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "//15 ::",
+			expectedResult: "2020/05/15 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// 20::",
+			expectedResult: "2020/05/11 20:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// :11:",
+			expectedResult: "2020/05/11 02:11:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 		{
 			argDate:        "// ::",
-			expectedResult: fmt.Sprintf("%d/12/31 23:59:59", time.Now().Year()),
+			expectedResult: "2020/12/31 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// :-2:",
+			expectedResult: "2020/05/11 01:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "// -4::",
+			expectedResult: "2020/05/10 22:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
+		},
+		{
+			argDate:        "//-11 ::",
+			expectedResult: "2020/04/30 23:59:59",
+			nowFct:         func() time.Time { return time.Date(2020, 05, 11, 02, 01, 50, 0, time.UTC) }, // 2020-05-11 02:01:50
 		},
 	}
 
 	for test := range tests {
-		d, _ := NewDate(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London")
+		d, _ := newDateWithSpecificNowFct(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London", tests[test].nowFct)
 		d.SetEndDate()
 		if d.String() != tests[test].expectedResult {
 			t.Errorf("wrong result=%s  expected=%s", d.String(), tests[test].expectedResult)

@@ -7,6 +7,7 @@ import (
 )
 
 type Date struct {
+	now      func() time.Time
 	dateStr  string // represent the date string, ex: 2020/02/01 -1::
 	ifmt     string // input format, default to %YYYY/%MM/%DD %hh:%mm:%ss
 	tz       string // timezone
@@ -42,6 +43,34 @@ type Date struct {
 
 func NewDate(date string, ifmt string, tz string) (*Date, error) {
 	d := Date{
+		now:     time.Now,
+		dateStr: date,
+		ifmt:    ifmt,
+		tz:      tz,
+	}
+	err := d.initRe() // init submatch and subExpNames
+	if err != nil {
+		return nil, err
+	}
+	err = d.initIndex() // init index*
+	if err != nil {
+		return nil, err
+	}
+	err = d.initLocation()
+	if err != nil {
+		return nil, err
+	}
+	err = d.init() // init time fields and relative time fields
+	if err != nil {
+		return nil, err
+	}
+	d.applyRelativ() // apply relative time
+	return &d, err
+}
+
+func newDateWithSpecificNowFct(date string, ifmt string, tz string, nowFct func() time.Time) (*Date, error) {
+	d := Date{
+		now:     nowFct,
 		dateStr: date,
 		ifmt:    ifmt,
 		tz:      tz,
@@ -164,7 +193,7 @@ func (d *Date) initRe() error {
 
 // initIndex initialise time fields
 func (d *Date) init() error {
-	now := time.Now()
+	now := d.now()
 	if err := d.initUnitTime(now.Second(), &d.second, &d.relativeSecond, d.indexSecond); err != nil {
 		return err
 	}
@@ -302,11 +331,13 @@ func (d *Date) SetEndDate() *Date {
 	} else {
 		return d
 	}
-	if d.indexMonth == -1 {
-		d.month = 12
-	}
 	if d.indexDay == -1 {
 		d.day = DayInMonth(d.year, d.month)
+	} else {
+		return d
+	}
+	if d.indexMonth == -1 {
+		d.month = 12
 	}
 	return d
 }
