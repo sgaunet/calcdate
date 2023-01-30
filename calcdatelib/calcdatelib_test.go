@@ -208,6 +208,15 @@ func TestNewDate(t *testing.T) {
 			expectedString: "1981/12/01 13:00:00",
 			expectedErr:    false,
 		},
+		{
+			Name:           "different format",
+			nowFct:         func() time.Time { return time.Date(1982, 01, 01, 00, 00, 00, 0, time.UTC) }, // 1982-01-01 00:00:00
+			argDate:        "2022/12/01",
+			argIfmt:        "%YYYY/%MM/%DD",
+			argTz:          "",
+			expectedString: "2022/12/01 00:00:00",
+			expectedErr:    false,
+		},
 	}
 
 	for _, test := range testCases {

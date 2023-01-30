@@ -160,7 +160,7 @@ func (d *Date) initIndexSecond() error {
 func (d *Date) initUnitTime(defaultValue int, ptrToInit *int, ptrRelativToInit *int, idx int) error {
 	*ptrToInit = defaultValue
 	*ptrRelativToInit = 0
-	if idx != -1 {
+	if idx > 0 {
 		value := d.submatch[idx]
 		if value != "" {
 			convert, err := strconv.Atoi(value)
