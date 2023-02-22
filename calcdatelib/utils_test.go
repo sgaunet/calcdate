@@ -2,6 +2,7 @@ package calcdatelib
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -143,6 +144,19 @@ func TestRenderTemplateErr(t *testing.T) {
 	argTz := ""
 	d, _ := NewDate(argDate, argIfmt, argTz)
 
+	tmpl := "{{ .Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MnusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/"
+	_, err := RenderTemplate(tmpl, d.Time(), d.Time())
+	if err == nil {
+		t.Errorf("template should not work")
+	}
+}
+
+func TestRenderTemplateErr2(t *testing.T) {
+	argDate := "1982/05/12 12:00:01"
+	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
+	argTz := ""
+	d, _ := NewDate(argDate, argIfmt, argTz)
+
 	tmpl := "{{ .Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/"
 	_, err := RenderTemplate(tmpl, d.Time(), d.Time())
 	if err == nil {
@@ -190,5 +204,69 @@ func TestDiffInDays(t *testing.T) {
 	expected := 9
 	if diff != expected {
 		t.Errorf("wrong result: diff=%d expected=%d", diff, expected)
+	}
+}
+
+func TestRenderIntervalLines(t *testing.T) {
+	argDate := "2022/02/02 00:00:00"
+	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
+	argTz := "UTC"
+	beginDate, _ := NewDate(argDate, argIfmt, argTz)
+	argDate = "2022/02/02 00:30:00"
+	endDate, _ := NewDate(argDate, argIfmt, argTz)
+
+	type args struct {
+		beginDate Date
+		endDate   Date
+		interval  time.Duration
+		tmpl      string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantRes []string
+		wantErr bool
+	}{
+		{
+			name: "sucess case",
+			args: args{
+				beginDate: *beginDate,
+				endDate:   *endDate,
+				interval:  5 * time.Minute,
+				tmpl:      "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/",
+			},
+			wantRes: []string{
+				"2022/02/02 00:00:00 -  00:04:58  \\o/",
+				"2022/02/02 00:05:00 -  00:09:58  \\o/",
+				"2022/02/02 00:10:00 -  00:14:58  \\o/",
+				"2022/02/02 00:15:00 -  00:19:58  \\o/",
+				"2022/02/02 00:20:00 -  00:24:58  \\o/",
+				"2022/02/02 00:25:00 -  00:29:58  \\o/",
+			},
+			wantErr: false,
+		},
+		{
+			name: "error in template",
+			args: args{
+				beginDate: *beginDate,
+				endDate:   *endDate,
+				interval:  5 * time.Minute,
+				tmpl:      "{{ .BegiTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/",
+			},
+			wantRes: nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotRes, err := RenderIntervalLines(tt.args.beginDate, tt.args.endDate, tt.args.interval, tt.args.tmpl)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RenderIntervalLines() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotRes, tt.wantRes) {
+				t.Errorf("RenderIntervalLines() = %v, want %v", gotRes, tt.wantRes)
+			}
+		})
 	}
 }
