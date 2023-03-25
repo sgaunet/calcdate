@@ -3,6 +3,7 @@ package calcdatelib
 import (
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -269,7 +270,7 @@ func (d *Date) Format(ofmt string) string {
 	res = doubleReplace(res, "%hh", "%02d", new.Hour())
 	res = doubleReplace(res, "%mm", "%02d", new.Minute())
 	res = doubleReplace(res, "%ss", "%02d", new.Second())
-	// res = strings.ReplaceAll(res, "@ts", strconv.FormatInt(date.Unix(), 10))
+	res = strings.ReplaceAll(res, "@ts", strconv.FormatInt(new.Unix(), 10))
 	return res
 }
 
