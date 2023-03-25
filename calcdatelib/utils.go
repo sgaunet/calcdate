@@ -63,7 +63,7 @@ func (d *Date) findIndexOf(searchGroup string) (int, error) {
 
 // DayInMonth returns the number of days in the month/year given in parameters
 func DayInMonth(year int, month int) int {
-	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC).AddDate(0, 1, 0).AddDate(0, 0, -1).Day()
+	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local).AddDate(0, 1, 0).AddDate(0, 0, -1).Day()
 }
 
 // renderTemplate will render tmpl according beginTime and endTime

@@ -8,11 +8,9 @@ import (
 )
 
 type Date struct {
-	now      func() time.Time
-	dateStr  string // represent the date string, ex: 2020/02/01 -1::
-	ifmt     string // input format, default to %YYYY/%MM/%DD %hh:%mm:%ss
-	tz       string // timezone
-	location *time.Location
+	now     func() time.Time
+	dateStr string // represent the date string, ex: 2020/02/01 -1::
+	ifmt    string // input format, default to %YYYY/%MM/%DD %hh:%mm:%ss
 
 	submatch    []string
 	subExpNames []string
@@ -42,22 +40,17 @@ type Date struct {
 	indexSecond int
 }
 
-func NewDate(date string, ifmt string, tz string) (*Date, error) {
+func NewDate(date string, ifmt string) (*Date, error) {
 	d := Date{
 		now:     time.Now,
 		dateStr: date,
 		ifmt:    ifmt,
-		tz:      tz,
 	}
 	err := d.initRe() // init submatch and subExpNames
 	if err != nil {
 		return nil, err
 	}
 	err = d.initIndex() // init index*
-	if err != nil {
-		return nil, err
-	}
-	err = d.initLocation()
 	if err != nil {
 		return nil, err
 	}
@@ -69,22 +62,17 @@ func NewDate(date string, ifmt string, tz string) (*Date, error) {
 	return &d, err
 }
 
-func newDateWithSpecificNowFct(date string, ifmt string, tz string, nowFct func() time.Time) (*Date, error) {
+func newDateWithSpecificNowFct(date string, ifmt string, nowFct func() time.Time) (*Date, error) {
 	d := Date{
 		now:     nowFct,
 		dateStr: date,
 		ifmt:    ifmt,
-		tz:      tz,
 	}
 	err := d.initRe() // init submatch and subExpNames
 	if err != nil {
 		return nil, err
 	}
 	err = d.initIndex() // init index*
-	if err != nil {
-		return nil, err
-	}
-	err = d.initLocation()
 	if err != nil {
 		return nil, err
 	}
@@ -216,30 +204,16 @@ func (d *Date) init() error {
 	return nil
 }
 
-// initLocation will initialize the location time (local for default)
-func (d *Date) initLocation() error {
-	locationOrigin, err := time.LoadLocation("Local")
-	if err != nil {
-		return err
-	}
-	if d.tz != "" {
-		d.location, err = time.LoadLocation(d.tz)
-	} else {
-		d.location = locationOrigin
-	}
-	return err
-}
-
 // String return the date according the format YYYY/%%/DD hh:mm:ss
 func (d *Date) String() string {
-	t := time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, d.location).In(d.location)
+	t := time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, time.Local)
 	return t.Format("2006/01/02 15:04:05")
 	// return t.Format("Mon Jan 2 15:04:05 -0700 MST 2006")
 }
 
 // Time returns the date as a time.Time
 func (d *Date) Time() time.Time {
-	return time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, d.location) //.In(d.location)
+	return time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, time.Local)
 }
 
 // Before will return true if t is before d
@@ -249,8 +223,7 @@ func (d *Date) Before(t *Date) bool {
 
 // Add will add the duration
 func (d *Date) Add(dur time.Duration) {
-	loc, _ := time.LoadLocation(d.tz)
-	new := d.Time().In(loc).Add(dur)
+	new := d.Time().Add(dur)
 	d.year = new.Year()
 	d.month = int(new.Month())
 	d.day = new.Day()
@@ -262,8 +235,7 @@ func (d *Date) Add(dur time.Duration) {
 // Format will return a string formatted with ofmt
 // Possible annotations : %YYYY %MM %DD %hh %mm %ss
 func (d *Date) Format(ofmt string) string {
-	loc, _ := time.LoadLocation(d.tz)
-	new := d.Time().In(loc)
+	new := d.Time()
 	res := doubleReplace(ofmt, "%YYYY", "%4d", new.Year())
 	res = doubleReplace(res, "%MM", "%02d", int(new.Month()))
 	res = doubleReplace(res, "%DD", "%02d", new.Day())

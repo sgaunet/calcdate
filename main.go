@@ -32,7 +32,7 @@ func printVersion() {
 }
 
 func main() {
-	var begindate, enddate, separator, ifmt, ofmt, tz string
+	var begindate, enddate, separator, ifmt, ofmt string
 	// var endTime, beginTime time.Time
 	var vOption bool
 	var interval time.Duration
@@ -43,7 +43,6 @@ func main() {
 	flag.StringVar(&begindate, "b", "// ::", "Begin date")
 	flag.StringVar(&enddate, "e", "", "End date")
 	flag.StringVar(&separator, "s", " ", "Separator")
-	flag.StringVar(&tz, "tz", "Local", "Timezone")
 	flag.StringVar(&ifmt, "ifmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss)")
 	flag.StringVar(&ofmt, "ofmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss), use @ts for timestamp")
 	flag.DurationVar(&interval, "i", 0, "Interval (Ex: 1m or 1h or 15s)")
@@ -69,19 +68,19 @@ func main() {
 	begindate = completeDate(begindate)
 	enddate = completeDate(enddate)
 
-	beginTime, err := calcdatelib.NewDate(begindate, ifmt, tz)
+	beginTime, err := calcdatelib.NewDate(begindate, ifmt)
 	if err != nil {
 		fmt.Println("Format date begindate KO")
 		os.Exit(1)
 	}
 
 	if rangeDate {
-		beginTime, err = calcdatelib.NewDate(begindate, ifmt, tz)
+		beginTime, err = calcdatelib.NewDate(begindate, ifmt)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
-		endTime, err := calcdatelib.NewDate(enddate, ifmt, tz)
+		endTime, err := calcdatelib.NewDate(enddate, ifmt)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)

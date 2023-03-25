@@ -111,8 +111,7 @@ func TestIsLeapYear(t *testing.T) {
 func TestRenderTemplate(t *testing.T) {
 	argDate := "1982/05/12 12:00:01"
 	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	argTz := ""
-	d, _ := NewDate(argDate, argIfmt, argTz)
+	d, _ := NewDate(argDate, argIfmt)
 
 	tmpl := "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} \\o/"
 	// tmpl= "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }}"
@@ -126,8 +125,7 @@ func TestRenderTemplate(t *testing.T) {
 func TestRenderTemplateMinusOneSecond(t *testing.T) {
 	argDate := "1982/05/12 12:00:01"
 	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	argTz := ""
-	d, _ := NewDate(argDate, argIfmt, argTz)
+	d, _ := NewDate(argDate, argIfmt)
 
 	tmpl := "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/"
 	// tmpl= "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }}"
@@ -141,8 +139,7 @@ func TestRenderTemplateMinusOneSecond(t *testing.T) {
 func TestRenderTemplateErr(t *testing.T) {
 	argDate := "1982/05/12 12:00:01"
 	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	argTz := ""
-	d, _ := NewDate(argDate, argIfmt, argTz)
+	d, _ := NewDate(argDate, argIfmt)
 
 	tmpl := "{{ .Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MnusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/"
 	_, err := RenderTemplate(tmpl, d.Time(), d.Time())
@@ -154,8 +151,7 @@ func TestRenderTemplateErr(t *testing.T) {
 func TestRenderTemplateErr2(t *testing.T) {
 	argDate := "1982/05/12 12:00:01"
 	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	argTz := ""
-	d, _ := NewDate(argDate, argIfmt, argTz)
+	d, _ := NewDate(argDate, argIfmt)
 
 	tmpl := "{{ .Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }} \\o/"
 	_, err := RenderTemplate(tmpl, d.Time(), d.Time())
@@ -165,41 +161,41 @@ func TestRenderTemplateErr2(t *testing.T) {
 }
 
 func TestAddDays(t *testing.T) {
-	ti := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.UTC)
-	tExpected := time.Date(2022, time.Month(2), 12, 0, 0, 0, 0, time.UTC)
+	ti := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.Local)
+	tExpected := time.Date(2022, time.Month(2), 12, 0, 0, 0, 0, time.Local)
 	if !IsSameDay(AddDays(ti, 10), tExpected) {
 		t.Error("time should be same")
 	}
 }
 
 func TestIsSameDay(t *testing.T) {
-	ti := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.UTC)
+	ti := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.Local)
 	if IsSameDay(ti, time.Now()) {
 		t.Error("time should not be same")
 	}
 }
 
 func TestStartOfDay(t *testing.T) {
-	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.UTC)
-	expected := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.UTC)
-	b := StartOfDay(a, time.UTC)
+	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.Local)
+	expected := time.Date(2022, time.Month(2), 2, 0, 0, 0, 0, time.Local)
+	b := StartOfDay(a, time.Local)
 	if !IsSameDay(b, expected) {
 		t.Error("time should be same")
 	}
 }
 
 func TestEndOfDay(t *testing.T) {
-	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.UTC)
-	expected := time.Date(2022, time.Month(2), 2, 23, 59, 59, 5, time.UTC)
-	b := EndOfDay(a, time.UTC)
+	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.Local)
+	expected := time.Date(2022, time.Month(2), 2, 23, 59, 59, 5, time.Local)
+	b := EndOfDay(a, time.Local)
 	if !IsSameDay(b, expected) {
 		t.Error("time should be same")
 	}
 }
 
 func TestDiffInDays(t *testing.T) {
-	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.UTC)
-	b := time.Date(2022, time.Month(2), 12, 22, 59, 59, 5, time.UTC)
+	a := time.Date(2022, time.Month(2), 2, 23, 15, 10, 5, time.Local)
+	b := time.Date(2022, time.Month(2), 12, 22, 59, 59, 5, time.Local)
 	diff := DiffInDays(a, b)
 	expected := 9
 	if diff != expected {
@@ -210,10 +206,9 @@ func TestDiffInDays(t *testing.T) {
 func TestRenderIntervalLines(t *testing.T) {
 	argDate := "2022/02/02 00:00:00"
 	argIfmt := "%YYYY/%MM/%DD %hh:%mm:%ss"
-	argTz := "UTC"
-	beginDate, _ := NewDate(argDate, argIfmt, argTz)
+	beginDate, _ := NewDate(argDate, argIfmt)
 	argDate = "2022/02/02 00:30:00"
-	endDate, _ := NewDate(argDate, argIfmt, argTz)
+	endDate, _ := NewDate(argDate, argIfmt)
 
 	type args struct {
 		beginDate Date
