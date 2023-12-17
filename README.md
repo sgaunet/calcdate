@@ -1,3 +1,6 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/sgaunet/calcdate)](https://goreportcard.com/report/github.com/sgaunet/calcdate)
+
+
 # calcdate
 
 calcdate is a utility to make some basic operation on date. It's useful when need to calculate a range of date in order to make database request.
