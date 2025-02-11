@@ -5,28 +5,28 @@ vars:
 
 tasks:
   default:
+    desc: "List all tasks"
     cmds:
-      - CGO_ENABLED=0 go build .
-      - upx -q {{.BINFILE}}
-    # silent: true
-    method: checksum
-    generates:
-      - "{{.BINFILE}}"
+      - task -a
 
   tests:
+    desc: "Run tests"
     dir: e2etests
     cmds:
       - venom run testsuite.yml --output-dir log
 
   snapshot:
+    desc: "Create a snapshot"
     cmds:
       - GITLAB_TOKEN="" goreleaser --clean --snapshot
     
   release:
+    desc: "Create a release"
     cmds:
       - GITLAB_TOKEN="" goreleaser --clean
 
   godoc:
+    desc: "Run godoc server"
     cmds:
       - godoc -http=:6060
     
