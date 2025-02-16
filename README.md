@@ -1,6 +1,5 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sgaunet/calcdate)](https://goreportcard.com/report/github.com/sgaunet/calcdate)
-[![Maintainability](https://api.codeclimate.com/v1/badges/d7c294390a2a3b7a99f6/maintainability)](https://codeclimate.com/github/sgaunet/calcdate/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/d7c294390a2a3b7a99f6/test_coverage)](https://codeclimate.com/github/sgaunet/calcdate/test_coverage)
+![Test Coverage](https://raw.githubusercontent.com/wiki/sgaunet/calcdate/coverage-badge.svg)
 
 # calcdate
 
