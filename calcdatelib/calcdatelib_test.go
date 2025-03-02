@@ -5,6 +5,9 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewDate(t *testing.T) {
@@ -665,4 +668,46 @@ func TestDate_AddMonth(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetOffsetUTC(t *testing.T) {
+	endMar2, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	require.Nil(t, err)
+	res := endMar2.GetOffset()
+	assert.Equal(t, "+00:00", res)
+}
+
+func TestGetOffsetLA(t *testing.T) {
+	endMar2, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "America/Los_Angeles")
+	require.Nil(t, err)
+	res := endMar2.GetOffset()
+	assert.Equal(t, "-07:00", res)
+}
+
+func TestGetTZAbrUTC(t *testing.T) {
+	date, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "UTC")
+	require.Nil(t, err)
+	res := date.GetTZAbr()
+	assert.Equal(t, "UTC", res)
+}
+
+func TestGetTZAbrLA(t *testing.T) {
+	date, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "America/Los_Angeles")
+	require.Nil(t, err)
+	res := date.GetTZAbr()
+	assert.Equal(t, "PDT", res) // Pacific Daylight Time
+}
+
+func TestGetTZAbrNY(t *testing.T) {
+	date, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "America/New_York")
+	require.Nil(t, err)
+	res := date.GetTZAbr()
+	assert.Equal(t, "EDT", res) // Eastern Daylight Time
+}
+
+func TestGetTZAbrParis(t *testing.T) {
+	date, err := NewDate("2020/03/31 23:59:59", "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/Paris")
+	require.Nil(t, err)
+	res := date.GetTZAbr()
+	assert.Equal(t, "CEST", res) // Central European Summer Time
 }
