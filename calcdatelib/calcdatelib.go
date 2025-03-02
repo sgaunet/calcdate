@@ -1,7 +1,11 @@
 package calcdatelib
 
 import (
+	"fmt"
+	"log"
+	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -239,7 +243,7 @@ func (d *Date) String() string {
 
 // Time returns the date as a time.Time
 func (d *Date) Time() time.Time {
-	return time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, d.location) //.In(d.location)
+	return time.Date(d.year, time.Month(d.month), d.day, d.hour, d.minute, d.second, 0, d.location).In(d.location)
 }
 
 // Before will return true if t is before d
@@ -270,8 +274,27 @@ func (d *Date) Format(ofmt string) string {
 	res = doubleReplace(res, "%hh", "%02d", new.Hour())
 	res = doubleReplace(res, "%mm", "%02d", new.Minute())
 	res = doubleReplace(res, "%ss", "%02d", new.Second())
+	res = strings.ReplaceAll(res, "%z", d.GetOffset())
+	res = strings.ReplaceAll(res, "%Z", d.GetTZAbr())
 	res = strings.ReplaceAll(res, "@ts", strconv.FormatInt(new.Unix(), 10))
 	return res
+}
+
+func (d *Date) GetOffset() string {
+	_, offset := d.Time().Zone()
+	hours := offset / 3600
+	minutes := (offset % 3600) / 60
+	if offset < 0 {
+		return fmt.Sprintf("-%02d:%02d", -hours, -minutes)
+	}
+	return fmt.Sprintf("+%02d:%02d", hours, minutes)
+}
+
+func (d *Date) GetTZAbr() string {
+	loc, _ := time.LoadLocation(d.tz)
+	new := d.Time().In(loc)
+	name, _ := new.Zone()
+	return name
 }
 
 func (d *Date) applyRelativ() {
@@ -408,4 +431,53 @@ func GetInterval(d1 *Date, d2 *Date) time.Duration {
 		return diff
 	}
 	return -diff
+}
+
+func ListTZ() {
+	var zoneDirs = map[string]string{
+		"android":   "/system/usr/share/zoneinfo/",
+		"darwin":    "/usr/share/zoneinfo/",
+		"dragonfly": "/usr/share/zoneinfo/",
+		"freebsd":   "/usr/share/zoneinfo/",
+		"linux":     "/usr/share/zoneinfo/",
+		"netbsd":    "/usr/share/zoneinfo/",
+		"openbsd":   "/usr/share/zoneinfo/",
+		"solaris":   "/usr/share/lib/zoneinfo/",
+	}
+	var timeZones []string
+
+	// Reads the Directory corresponding to the OS
+	dirFile, _ := os.ReadDir(zoneDirs[runtime.GOOS])
+	for _, i := range dirFile {
+		// Checks if starts with Capital Letter
+		if i.Name() == (strings.ToUpper(i.Name()[:1]) + i.Name()[1:]) {
+			if i.IsDir() {
+				// Recursive read if directory
+				subFiles, err := os.ReadDir(zoneDirs[runtime.GOOS] + i.Name())
+				if err != nil {
+					log.Fatal(err)
+				}
+				for _, s := range subFiles {
+					// Appends the path to timeZones var
+					timeZones = append(timeZones, i.Name()+"/"+s.Name())
+				}
+			}
+			// Appends the path to timeZones var
+			timeZones = append(timeZones, i.Name())
+		}
+	}
+	// Loop over timezones and Check Validity, Delete entry if invalid.
+	// Range function doesnt work with changing length.
+	for i := 0; i < len(timeZones); i++ {
+		_, err := time.LoadLocation(timeZones[i])
+		if err != nil {
+			// newSlice = timeZones[:n]  timeZones[n+1:]
+			timeZones = append(timeZones[:i], timeZones[i+1:]...)
+			continue
+		}
+	}
+	// Now we Can range timeZones for printing
+	for _, i := range timeZones {
+		fmt.Println(i)
+	}
 }

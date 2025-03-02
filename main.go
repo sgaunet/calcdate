@@ -34,7 +34,7 @@ func printVersion() {
 func main() {
 	var begindate, enddate, separator, ifmt, ofmt, tz string
 	// var endTime, beginTime time.Time
-	var vOption bool
+	var vOption, listTZ bool
 	var interval time.Duration
 	var tmpl string
 	var err error
@@ -43,13 +43,19 @@ func main() {
 	flag.StringVar(&begindate, "b", "// ::", "Begin date")
 	flag.StringVar(&enddate, "e", "", "End date")
 	flag.StringVar(&separator, "s", " ", "Separator")
-	flag.StringVar(&tz, "tz", "Local", "Timezone")
+	flag.StringVar(&tz, "tz", "Local", "Input timezone")
 	flag.StringVar(&ifmt, "ifmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss)")
-	flag.StringVar(&ofmt, "ofmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss), use @ts for timestamp")
+	flag.StringVar(&ofmt, "ofmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss), use @ts for timestamp %z for offset %Z for timezone")
 	flag.DurationVar(&interval, "i", 0, "Interval (Ex: 1m or 1h or 15s)")
 	flag.StringVar(&tmpl, "tmpl", "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }}", "Used only with -i option")
+	flag.BoolVar(&listTZ, "list-tz", false, "List timezones")
 	flag.BoolVar(&vOption, "v", false, "Get version")
 	flag.Parse()
+
+	if listTZ {
+		calcdatelib.ListTZ()
+		os.Exit(0)
+	}
 
 	if vOption {
 		printVersion()
