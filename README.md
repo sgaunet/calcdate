@@ -2,6 +2,10 @@
 ![GitHub Downloads](https://img.shields.io/github/downloads/sgaunet/calcdate/total)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sgaunet/calcdate)](https://goreportcard.com/report/github.com/sgaunet/calcdate)
 ![Test Coverage](https://raw.githubusercontent.com/wiki/sgaunet/calcdate/coverage-badge.svg)
+[![linter](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml)
+[![coverage](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml)
+[![Snapshot Build](https://github.com/sgaunet/calcdate/actions/workflows/snapshot.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/snapshot.yml)
+[![Release Build](https://github.com/sgaunet/calcdate/actions/workflows/release.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/release.yml)
 [![GoDoc](https://godoc.org/github.com/sgaunet/calcdate?status.svg)](https://godoc.org/github.com/sgaunet/calcdate)
 [![License](https://img.shields.io/github/license/sgaunet/calcdate.svg)](LICENSE)
 

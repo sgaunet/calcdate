@@ -2,7 +2,7 @@ version: 2
 before:
   hooks:
     # You may remove this if you don't use go modules.
-    - go get
+    - go mod download
     # you may remove this if you don't need go generate
     #- go generate ./...
 builds:
@@ -38,7 +38,8 @@ changelog:
       - '^test:'
 
 brews:
-  - homepage: 'https://github.com/sgaunet/homebrew-tools'
+  - homepage: 'https://github.com/sgaunet/calcdate'
+    description: 'A simple and efficient Markdown to HTML converter'
     directory: Formula
     commit_author:
       name: sgaunet
@@ -46,3 +47,10 @@ brews:
     repository:
       owner: sgaunet
       name: homebrew-tools
+      # Token with 'repo' scope is required for pushing to a different repository
+      token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
+    url_template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
+    install: |
+      bin.install "calcdate"
+    test: |
+      system "#{bin}/calcdate", "-h"
