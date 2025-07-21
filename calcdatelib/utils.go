@@ -9,8 +9,11 @@ import (
 	"time"
 )
 
+// ErrFormatMismatch is returned when the date format doesn't match the expected format.
+var ErrFormatMismatch = errors.New("format is not the same")
+
 // doubleReplace replaces keyword by a string representing a scanfformat (like %2d)
-// in the string fmtstr. Finally the scanfformat is expandined to data
+// in the string fmtstr. Finally the scanfformat is expanded to data.
 func doubleReplace(fmtstr string, keyword string, scanfformat string, data int) string {
 	finalValue := fmt.Sprintf(scanfformat, data)
 	res := fmtstr
@@ -21,6 +24,7 @@ func doubleReplace(fmtstr string, keyword string, scanfformat string, data int) 
 	return res
 }
 
+// convertStdFormatToGolang converts standard date format to Go time format.
 func convertStdFormatToGolang(str string) string {
 	res := strings.ReplaceAll(str, "%YYYY", "2006")
 	res = strings.ReplaceAll(res, "%MM", "01")
@@ -31,6 +35,7 @@ func convertStdFormatToGolang(str string) string {
 	return res
 }
 
+// createRegexpFromIfmt creates a regular expression pattern from input format.
 func createRegexpFromIfmt(ifmt string) string {
 	r := strings.ReplaceAll(ifmt, "%YYYY", "(?P<Year>([\\+-]?\\d+)?)")
 	r = strings.ReplaceAll(r, "%MM", `(?P<Month>([\+-]?\d+)?)`)
@@ -42,16 +47,17 @@ func createRegexpFromIfmt(ifmt string) string {
 	return r
 }
 
-// findIndexOf search a value in an array of string and returns its index
+// findIndexOf searches a value in an array of string and returns its index.
 func (d *Date) findIndexOf(searchGroup string) (int, error) {
 	var idxFound int
+
 	for index, value := range d.subExpNames {
 		if value == searchGroup {
 			idxFound = index
 		}
 	}
 	if len(d.submatch) < idxFound {
-		return -1, errors.New("format is not the same")
+		return -1, ErrFormatMismatch
 	}
 	if len(d.submatch) != 0 {
 		if len(d.submatch[idxFound]) != 0 {
@@ -62,12 +68,13 @@ func (d *Date) findIndexOf(searchGroup string) (int, error) {
 }
 
 // DayInMonth returns the number of days in the month/year given in parameters
+// DayInMonth returns the number of days in the specified month and year.
 func DayInMonth(year int, month int) int {
 	return time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC).AddDate(0, 1, 0).AddDate(0, 0, -1).Day()
 }
 
-// renderTemplate will render tmpl according beginTime and endTime
-// Possibility to use a function called MinusOneSecond
+// RenderTemplate renders tmpl according beginTime and endTime.
+// Possibility to use a function called MinusOneSecond.
 func RenderTemplate(tmpl string, beginTime time.Time, endTime time.Time) (string, error) {
 	type dataDate struct {
 		BeginTime time.Time
@@ -86,47 +93,54 @@ func RenderTemplate(tmpl string, beginTime time.Time, endTime time.Time) (string
 		},
 	}).Parse(temapltestr)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("template.Parse: %w", err)
 	}
 
 	var doc bytes.Buffer
 	err = t.Execute(&doc, d)
-	s := doc.String()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("template.Execute: %w", err)
 	}
-	return s, err
+	return doc.String(), nil
 }
 
+// AddDays adds the specified number of days to a time.Time.
 func AddDays(t time.Time, days int) time.Time {
 	return t.AddDate(0, 0, days)
 }
 
+// StartOfDay returns the start of the day (00:00:00) for the given time and location.
 func StartOfDay(t time.Time, location *time.Location) time.Time {
 	year, month, day := t.In(location).Date()
 	dayStartTime := time.Date(year, month, day, 0, 0, 0, 0, location)
 	return dayStartTime
 }
 
+// EndOfDay returns the end of the day (23:59:59) for the given time and location.
 func EndOfDay(t time.Time, location *time.Location) time.Time {
 	year, month, day := t.In(location).Date()
 	dayEndTime := time.Date(year, month, day, 23, 59, 59, 0, location)
 	return dayEndTime
 }
 
+// IsSameDay returns true if both times are on the same day.
 func IsSameDay(first time.Time, second time.Time) bool {
 	return first.YearDay() == second.YearDay() && first.Year() == second.Year()
 }
 
+// DiffInDays returns the difference in days between two times.
 func DiffInDays(start time.Time, end time.Time) int {
-	return int(end.Sub(start).Hours() / 24)
+	return int(end.Sub(start).Hours() / HoursPerDay)
 }
 
+// IsLeapYear returns true if the given year is a leap year.
 func IsLeapYear(year int) bool {
 	return year%4 == 0 && year%100 != 0 || year%400 == 0
 }
 
-func RenderIntervalLines(beginDate Date, endDate Date, interval time.Duration, tmpl string) (res []string, err error) {
+// RenderIntervalLines renders multiple interval lines between two dates using a template.
+func RenderIntervalLines(beginDate Date, endDate Date, interval time.Duration, tmpl string) ([]string, error) {
+	var res []string
 	tmpInterval := beginDate
 	for tmpInterval.Before(&endDate) {
 		tmpEndInterval := tmpInterval
@@ -137,7 +151,8 @@ func RenderIntervalLines(beginDate Date, endDate Date, interval time.Duration, t
 		}
 		results := strings.Split(l, "\n")
 		res = append(res, results...)
+
 		tmpInterval.Add(interval)
 	}
-	return
+	return res, nil
 }

@@ -58,7 +58,11 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       go run . -b "//-1" > /tmp/1
-      date "+%Y/%m/%d %H:%M:%S" -d "1 day ago" > /tmp/2
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        date -v-1d "+%Y/%m/%d %H:%M:%S" > /tmp/2
+      else
+        date "+%Y/%m/%d %H:%M:%S" -d "1 day ago" > /tmp/2
+      fi
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0
@@ -69,7 +73,11 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       go run . -b "//-1" -e "//-1" > /tmp/1
-      echo "$(date "+%Y/%m/%d 00:00:00" -d "1 day ago") $(date "+%Y/%m/%d 23:59:59" -d "1 day ago")" > /tmp/2
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "$(date -v-1d "+%Y/%m/%d 00:00:00") $(date -v-1d "+%Y/%m/%d 23:59:59")" > /tmp/2
+      else
+        echo "$(date "+%Y/%m/%d 00:00:00" -d "1 day ago") $(date "+%Y/%m/%d 23:59:59" -d "1 day ago")" > /tmp/2
+      fi
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0
@@ -80,7 +88,11 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       go run . -s "' and '" -b ":-5:" -e ":-1:" > /tmp/1
-      echo "$(date "+%Y/%m/%d %H:%M:00" -d "5 min ago")' and '$(date "+%Y/%m/%d %H:%M:59" -d "1 min ago")"  > /tmp/2
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "$(date -v-5M "+%Y/%m/%d %H:%M:00")' and '$(date -v-1M "+%Y/%m/%d %H:%M:59")"  > /tmp/2
+      else
+        echo "$(date "+%Y/%m/%d %H:%M:00" -d "5 min ago")' and '$(date "+%Y/%m/%d %H:%M:59" -d "1 min ago")"  > /tmp/2
+      fi
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0
@@ -91,7 +103,11 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       go run . -b "-1//" > /tmp/1
-      date "+%Y/%m/%d %H:%M:%S" -d "1 year ago" > /tmp/2
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        date -v-1y "+%Y/%m/%d %H:%M:%S" > /tmp/2
+      else
+        date "+%Y/%m/%d %H:%M:%S" -d "1 year ago" > /tmp/2
+      fi
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0

@@ -345,7 +345,7 @@ func TestSetBeginDate(t *testing.T) {
 	for test := range tests {
 		d, err := newDateWithSpecificNowFct(tests[test].argDate, "%YYYY/%MM/%DD %hh:%mm:%ss", "Europe/London", tests[test].nowFct)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("error: %v", err)
 		}
 		d.SetBeginDate()
 		if d.String() != tests[test].expectedResult {
