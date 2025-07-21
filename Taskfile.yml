@@ -9,6 +9,12 @@ tasks:
     cmds:
       - task -a
 
+  linter:
+    desc: "Run linter"
+    cmds:
+      - go generate ./...
+      - golangci-lint run
+
   tests:
     desc: "Run tests"
     dir: e2etests
