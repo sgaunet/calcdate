@@ -51,6 +51,6 @@ brews:
       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
     url_template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
     install: |
-      bin.install "calcdate"
+      bin.install "{{ .ArtifactName }}" => "calcdate"
     test: |
       system "#{bin}/calcdate", "-h"
