@@ -130,3 +130,16 @@ $ calcdate -b "2022/01/07 20:50:00" -e "2022/01/08 00:30:00"   -i 5m -tmpl "{{ .
 2022/01/08 00:25:00 - 2022/01/08 00:30:00 1641597900 1641598200 ---  00:29:59 
 ```
 
+# Install
+
+## Option 1
+
+* Download the release
+* Install the binary in /usr/local/bin 
+
+## Option 2: With brew
+
+```
+brew tap sgaunet/homebrew-tools
+brew install sgaunet/tools/calcdate
+```
