@@ -182,6 +182,11 @@ func parseISODate(value string, loc *time.Location) (time.Time, error) {
 		}
 	}
 	
+	// Try parsing with timezone name at the end (e.g., "2006-01-02 15:04:05 UTC")
+	if t, err := parseWithTimezoneName(value); err == nil {
+		return t, nil
+	}
+	
 	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidISODateFormat, value)
 }
 
@@ -376,57 +381,73 @@ func applyTransformOperation(date time.Time, op, value string, loc *time.Locatio
 	}
 }
 
-func startOfDay(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+func startOfDay(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, originalLoc)
 }
 
-func endOfDay(t time.Time, loc *time.Location) time.Time {
+func endOfDay(t time.Time, _ *time.Location) time.Time {
 	const maxNanos = 999999999
-	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, maxNanos, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, maxNanos, originalLoc)
 }
 
-func startOfWeek(t time.Time, loc *time.Location) time.Time {
+func startOfWeek(t time.Time, _ *time.Location) time.Time {
 	// Adjust to Monday
 	weekday := int(t.Weekday())
 	if weekday == 0 {
 		weekday = DaysInWeek
 	}
 	monday := t.AddDate(0, 0, -(weekday - 1))
-	return startOfDay(monday, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return startOfDay(monday, originalLoc)
 }
 
-func endOfWeek(t time.Time, loc *time.Location) time.Time {
+func endOfWeek(t time.Time, _ *time.Location) time.Time {
 	// Adjust to Sunday
 	weekday := int(t.Weekday())
 	if weekday == 0 {
 		weekday = DaysInWeek
 	}
 	sunday := t.AddDate(0, 0, DaysInWeek-weekday)
-	return endOfDay(sunday, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return endOfDay(sunday, originalLoc)
 }
 
-func startOfMonth(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
+func startOfMonth(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, originalLoc)
 }
 
-func endOfMonth(t time.Time, loc *time.Location) time.Time {
+func endOfMonth(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
 	// Go to first day of next month, then subtract one day
-	firstOfNext := time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, loc)
+	firstOfNext := time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, originalLoc)
 	lastOfMonth := firstOfNext.AddDate(0, 0, -1)
-	return endOfDay(lastOfMonth, loc)
+	return endOfDay(lastOfMonth, originalLoc)
 }
 
-func startOfYear(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), time.January, 1, 0, 0, 0, 0, loc)
+func startOfYear(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), time.January, 1, 0, 0, 0, 0, originalLoc)
 }
 
-func endOfYear(t time.Time, loc *time.Location) time.Time {
+func endOfYear(t time.Time, _ *time.Location) time.Time {
 	const maxNanos = 999999999
 	const lastDay = 31
-	return time.Date(t.Year(), time.December, lastDay, 23, 59, 59, maxNanos, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), time.December, lastDay, 23, 59, 59, maxNanos, originalLoc)
 }
 
-func startOfQuarter(t time.Time, loc *time.Location) time.Time {
+func startOfQuarter(t time.Time, _ *time.Location) time.Time {
 	month := t.Month()
 	var quarterStartMonth time.Month
 	
@@ -441,10 +462,12 @@ func startOfQuarter(t time.Time, loc *time.Location) time.Time {
 		quarterStartMonth = time.October
 	}
 	
-	return time.Date(t.Year(), quarterStartMonth, 1, 0, 0, 0, 0, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), quarterStartMonth, 1, 0, 0, 0, 0, originalLoc)
 }
 
-func endOfQuarter(t time.Time, loc *time.Location) time.Time {
+func endOfQuarter(t time.Time, _ *time.Location) time.Time {
 	month := t.Month()
 	var quarterEndMonth time.Month
 	
@@ -459,10 +482,12 @@ func endOfQuarter(t time.Time, loc *time.Location) time.Time {
 		quarterEndMonth = time.December
 	}
 	
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
 	// Get last day of quarter end month
-	firstOfNext := time.Date(t.Year(), quarterEndMonth+1, 1, 0, 0, 0, 0, loc)
+	firstOfNext := time.Date(t.Year(), quarterEndMonth+1, 1, 0, 0, 0, 0, originalLoc)
 	lastOfQuarter := firstOfNext.AddDate(0, 0, -1)
-	return endOfDay(lastOfQuarter, loc)
+	return endOfDay(lastOfQuarter, originalLoc)
 }
 
 func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) {
@@ -509,29 +534,84 @@ func truncateDate(t time.Time, unit string, loc *time.Location) (time.Time, erro
 	}
 }
 
-func startOfHour(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, loc)
+func startOfHour(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, originalLoc)
 }
 
-func endOfHour(t time.Time, loc *time.Location) time.Time {
+func endOfHour(t time.Time, _ *time.Location) time.Time {
 	const maxNanos = 999999999
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 59, 59, maxNanos, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 59, 59, maxNanos, originalLoc)
 }
 
-func startOfMinute(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, loc)
+func startOfMinute(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, originalLoc)
 }
 
-func endOfMinute(t time.Time, loc *time.Location) time.Time {
+func endOfMinute(t time.Time, _ *time.Location) time.Time {
 	const maxNanos = 999999999
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 59, maxNanos, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 59, maxNanos, originalLoc)
 }
 
-func startOfSecond(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, loc)
+func startOfSecond(t time.Time, _ *time.Location) time.Time {
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, originalLoc)
 }
 
-func endOfSecond(t time.Time, loc *time.Location) time.Time {
+func endOfSecond(t time.Time, _ *time.Location) time.Time {
 	const maxNanos = 999999999
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), maxNanos, loc)
+	// Preserve the original timezone of the input time
+	originalLoc := t.Location()
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), maxNanos, originalLoc)
+}
+
+func parseWithTimezoneName(value string) (time.Time, error) {
+	// Split by space to find potential timezone name at the end
+	parts := strings.Fields(value)
+	const minPartsForTimezone = 2
+	if len(parts) < minPartsForTimezone {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidISODateFormat, value)
+	}
+	
+	// Check if the last part might be a timezone name
+	tzName := parts[len(parts)-1]
+	const minTzNameLength = 2
+	const maxTzNameLength = 5
+	if len(tzName) < minTzNameLength || len(tzName) > maxTzNameLength {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidISODateFormat, value)
+	}
+	
+	// Try to load the timezone
+	loc, err := time.LoadLocation(tzName)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidTimezone, tzName)
+	}
+	
+	// Reconstruct the date/time part without the timezone name
+	dateTimePart := strings.Join(parts[:len(parts)-1], " ")
+	
+	// Try various date formats without timezone
+	formats := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02T15:04",
+		"2006-01-02",
+	}
+	
+	for _, format := range formats {
+		if t, err := time.ParseInLocation(format, dateTimePart, loc); err == nil {
+			return t, nil
+		}
+	}
+	
+	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidISODateFormat, value)
 }

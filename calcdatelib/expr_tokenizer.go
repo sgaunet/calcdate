@@ -281,7 +281,80 @@ func (t *Tokenizer) readOptionalTimezone() {
 		for t.pos < len(t.input) && (unicode.IsDigit(rune(t.input[t.pos])) || t.input[t.pos] == ':') {
 			t.pos++
 		}
+	case ' ':
+		// Check if there's a timezone name after the space
+		t.readOptionalTimezoneNameAfterSpace()
+	default:
+		// Check if we're at the start of a timezone name (no space prefix)
+		t.readOptionalTimezoneName()
 	}
+}
+
+func (t *Tokenizer) readOptionalTimezoneNameAfterSpace() {
+	if t.pos >= len(t.input) || t.input[t.pos] != ' ' {
+		return
+	}
+	
+	// Skip the space
+	spacePos := t.pos
+	t.pos++
+	
+	// Try to read timezone name
+	if t.tryReadTimezoneName() {
+		// Successfully read timezone name, keep the position
+		return
+	}
+	
+	// If we couldn't read a timezone name, revert to before the space
+	t.pos = spacePos
+}
+
+func (t *Tokenizer) readOptionalTimezoneName() {
+	t.tryReadTimezoneName()
+}
+
+func (t *Tokenizer) tryReadTimezoneName() bool {
+	startPos := t.pos
+	
+	const maxTimezoneNameLength = 5
+	const minTimezoneNameLength = 2
+	
+	// Read potential timezone name (letters only, 2-5 characters)
+	for t.pos < len(t.input) && unicode.IsLetter(rune(t.input[t.pos])) && (t.pos-startPos) < maxTimezoneNameLength {
+		t.pos++
+	}
+	
+	// Check if we read a reasonable timezone name length
+	nameLength := t.pos - startPos
+	if nameLength < minTimezoneNameLength || nameLength > maxTimezoneNameLength {
+		t.pos = startPos
+		return false
+	}
+	
+	// Validate that this looks like a timezone name
+	potentialTZ := t.input[startPos:t.pos]
+	if t.isValidTimezoneName(potentialTZ) {
+		return true
+	}
+	
+	t.pos = startPos
+	return false
+}
+
+func (t *Tokenizer) isValidTimezoneName(name string) bool {
+	// Common timezone abbreviations and names
+	validTimezones := []string{
+		"UTC", "GMT", "EST", "CST", "MST", "PST", "EDT", "CDT", "MDT", "PDT",
+		"CET", "CEST", "JST", "IST", "BST", "AEST", "AEDT",
+	}
+	
+	upperName := strings.ToUpper(name)
+	for _, tz := range validTimezones {
+		if upperName == tz {
+			return true
+		}
+	}
+	return false
 }
 
 func (t *Tokenizer) isTime() bool {

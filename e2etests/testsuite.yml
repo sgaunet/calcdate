@@ -715,6 +715,139 @@ testcases:
     - result.code ShouldEqual 0
     - result.systemout ShouldContain "2024-01-01T00:00:00-05:00"
 
+- name: expr - inline timezone UTC
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 UTC +1d | endOfMinute' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-31 14:34:59"
+
+- name: expr - inline timezone GMT
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 GMT | startOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-30 14:00:00"
+
+- name: expr - inline timezone EST
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 EST | endOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-30 19:59:59"
+
+- name: expr - inline timezone CET
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 CET +2h' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-30 14:34:45"
+
+- name: expr - timezone with time boundaries
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 UTC | endOfHour +1d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-31 14:59:59"
+
+# Tests for timezone precedence and behavior
+- name: expr - inline timezone parsing vs output flag
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2025-08-30 12:34:45 EST' -tz UTC --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-30T17:34:45Z"
+
+- name: expr - timezone precedence documentation
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Parse as UTC (inline), output in America/New_York (-tz flag)
+      result1=$(go run . -x '2025-08-30 12:00:00 UTC' -tz 'America/New_York' --format iso)
+      echo "Input UTC, Output NYC: $result1"
+      # Should show UTC time converted to NYC time (UTC-4 in summer)
+      [[ "$result1" == *"08:00:00"* ]]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - timezone combination behavior
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Test that inline timezone + -tz flag work together logically
+      # Parse 12:00 EST (17:00 UTC), output in UTC
+      go run . -x '2025-08-30 12:00:00 EST +3h' -tz UTC --format iso | grep "2025-08-30T20:00:00Z"
+    assertions:
+    - result.code ShouldEqual 0
+
+# Bug regression tests for timezone handling in pipeline operations
+- name: expr - timezone pipeline bug regression CET
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Test the exact bug case: CET (UTC+2 in summer) with endOfMinute
+      go run . -x '2025-08-30 12:34:45 CET +1d | endOfMinute' -tz 'UTC' --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-31T10:34:59Z"
+
+- name: expr - timezone pipeline bug regression EST
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Test EST (UTC-5) with time boundary operations
+      go run . -x '2025-08-30 12:34:45 EST | endOfHour +1d' -tz 'UTC' --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-31T17:59:59Z"
+
+- name: expr - timezone boundary operations chaining
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Test multiple chained boundary operations with timezone conversion
+      go run . -x '2025-08-30 12:34:45 EST | startOfHour | endOfHour' -tz 'UTC' --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-08-30T17:59:59Z"
+
+- name: expr - timezone all boundary operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Test that all time boundary operations preserve timezone context
+      result1=$(go run . -x '2025-08-30 12:34:45 UTC | startOfMinute' -tz 'EST' --format iso)
+      result2=$(go run . -x '2025-08-30 12:34:45 UTC | startOfSecond' -tz 'EST' --format iso)  
+      result3=$(go run . -x '2025-08-30 12:34:45 UTC | startOfDay' -tz 'EST' --format iso)
+      # All should show correct UTC->EST conversions (UTC-5)
+      [[ "$result1" == *"07:34:00"* ]] && [[ "$result2" == *"07:34:45"* ]] && [[ "$result3" == *"19:00:00"* ]]
+    assertions:
+    - result.code ShouldEqual 0
+
 # Edge cases and error conditions
 - name: expr - leap year handling
   steps:
