@@ -116,7 +116,661 @@ testcases:
   steps:
   - type: exec
     script: |
-      rm /tmp/1 /tmp/2
+      rm -f /tmp/1 /tmp/2 /tmp/3 /tmp/4
     assertions:
     - result.code ShouldEqual 0
+
+# Tests for --format flag in legacy mode
+- name: format flag - timestamp
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/01 00:00:00" --format ts
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "1704063600"
+
+- name: format flag - iso
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/01 00:00:00" -tz UTC --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01T00:00:00Z"
+
+- name: format flag - sql
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/01 12:30:45" --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 12:30:45"
+
+- name: format flag - compact
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/15 00:00:00" --format compact
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "20240115"
+
+- name: format flag - with range
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/01 00:00:00" -e "2024/01/02 00:00:00" --format ts
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "1704063600 1704150000"
+
+# Tests for expression syntax
+- name: expr - today
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x 'today' --format sql)
+      expected=$(date "+%Y-%m-%d 00:00:00")
+      [ "$result" = "$expected" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - now
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x 'now' --format sql)
+      # Check it matches today's date pattern
+      echo "$result" | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - yesterday
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x 'yesterday' --format sql > /tmp/1
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        date -v-1d "+%Y-%m-%d 00:00:00" > /tmp/2
+      else
+        date "+%Y-%m-%d 00:00:00" -d "1 day ago" > /tmp/2
+      fi
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - tomorrow
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x 'tomorrow' --format sql > /tmp/1
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+        date -v+1d "+%Y-%m-%d 00:00:00" > /tmp/2
+      else
+        date "+%Y-%m-%d 00:00:00" -d "1 day" > /tmp/2
+      fi
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - iso date
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-15 00:00:00"
+
+- name: expr - iso datetime
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15T14:30:45' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-15 14:30:45"
+
+# Tests for arithmetic operations
+- name: expr - add days
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-15 +7d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-22 00:00:00"
+
+- name: expr - subtract days
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-15 -3d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-12 00:00:00"
+
+- name: expr - add weeks
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 +2w' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-15 00:00:00"
+
+- name: expr - add months
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-31 +1M' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-02 00:00:00"
+
+- name: expr - add years
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-02-29 +1Y' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2025-03-01 00:00:00"
+
+- name: expr - multiple operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 +1M +2d +3h' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-03 03:00:00"
+
+# Tests for pipeline operations
+- name: expr - pipe operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-15 | +1M | +2d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-17 00:00:00"
+
+- name: expr - startOfMonth
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15 | startOfMonth' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-01 00:00:00"
+
+- name: expr - endOfMonth
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-02-15 | endOfMonth' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-29 23:59:59"
+
+- name: expr - startOfWeek
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15 | startOfWeek' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-11 00:00:00"
+
+- name: expr - endOfWeek
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15 | endOfWeek' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-17 23:59:59"
+
+- name: expr - startOfYear
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-07-15 | startOfYear' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00"
+
+- name: expr - endOfYear
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-07-15 | endOfYear' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-12-31 23:59:59"
+
+- name: expr - mixed pipeline operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-03-15 | startOfMonth | +1M | endOfMonth' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-04-30 23:59:59"
+
+- name: expr - operations without pipes
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-15 | endOfMonth +1d +1s' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-02 00:00:00"
+
+# Tests for range expressions
+- name: expr - simple range
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-01-05' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-01-05 00:00:00"
+
+- name: expr - range with operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-01-01 | +7d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-01-08 00:00:00"
+
+- name: expr - range with endOfMonth
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-02-01 ... 2024-02-01 | endOfMonth' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-01 00:00:00 - 2024-02-29 23:59:59"
+
+- name: expr - range with multiple operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-01-01 | endOfMonth +1d +1s' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-02-02 00:00:00"
+
+- name: expr - relative range
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x 'today ... today | +7d' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+    assertions:
+    - result.code ShouldEqual 0
+
+# Tests for iteration with --each
+- name: expr - each day iteration
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01 ... 2024-01-04' --each 1d --format sql | wc -l | tr -d ' ')
+      [ "$result" = "3" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - each week iteration
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01 ... 2024-01-15' --each 1w --format sql | wc -l | tr -d ' ')
+      [ "$result" = "2" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - each month iteration
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01 ... 2024-04-01' --each 1M --format sql | wc -l | tr -d ' ')
+      [ "$result" = "3" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - each quarter iteration
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-07-01' --each 1q --format sql | head -1
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-04-01 00:00:00"
+
+- name: expr - each hour iteration
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01T00:00:00 ... 2024-01-01T03:00:00' --each 1h --format sql | wc -l | tr -d ' ')
+      [ "$result" = "3" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - iteration with pipeline end
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01 ... 2024-01-01 | +3d' --each 1d --format sql | wc -l | tr -d ' ')
+      [ "$result" = "3" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+# Tests for transform expressions
+- name: expr - transform begin and end
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-01-02' --each 1d --transform '$begin +8h, $end +20h' --format sql | head -1
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 08:00:00 - 2024-01-02 20:00:00"
+
+- name: expr - transform with operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 ... 2024-01-03' --each 1d --transform '$begin | startOfDay +9h, $end | startOfDay +17h' --format sql | head -1
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 09:00:00 - 2024-01-02 17:00:00"
+
+# Tests for skip weekends
+- name: expr - skip weekends
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Jan 6-7, 2024 is Saturday-Sunday
+      result=$(go run . -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql | wc -l | tr -d ' ')
+      [ "$result" = "2" ]  # Only Friday and Monday
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - skip weekends verify dates
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      output=$(go run . -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql)
+      echo "$output" | grep -q "2024-01-05"  # Should contain Friday
+      echo "$output" | grep -q "2024-01-08"  # Should contain Monday
+      ! echo "$output" | grep -q "2024-01-06"  # Should NOT contain Saturday
+      ! echo "$output" | grep -q "2024-01-07"  # Should NOT contain Sunday
+    assertions:
+    - result.code ShouldEqual 0
+
+# Tests for time operations
+- name: expr - add hours minutes seconds
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01T10:00:00 +2h +30m +45s' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 12:30:45"
+
+- name: expr - round hour
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01T10:35:00 | round hour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 11:00:00"
+
+- name: expr - trunc hour
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01T10:35:00 | trunc hour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 10:00:00"
+
+- name: expr - set time
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-15 | time 14:30:00' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-15 14:30:00"
+
+# Tests for timezone support
+- name: expr - timezone UTC
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01T12:00:00' -tz UTC --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01T12:00:00Z"
+
+- name: expr - timezone conversion
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01T00:00:00' -tz 'America/New_York' --format iso
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01T00:00:00-05:00"
+
+# Edge cases and error conditions
+- name: expr - leap year handling
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-02-29' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-02-29 00:00:00"
+
+- name: expr - non leap year
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2023-02-28 +1d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2023-03-01 00:00:00"
+
+- name: expr - month boundary
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-31 +1M' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-02 00:00:00"
+
+- name: expr - year boundary
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2023-12-31 +1d' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00"
+
+- name: expr - startOfQuarter
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-05-15 | startOfQuarter' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-04-01 00:00:00"
+
+- name: expr - endOfQuarter
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-05-15 | endOfQuarter' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-06-30 23:59:59"
+
+- name: expr - complex pipeline
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x 'today | startOfMonth | -1d | endOfMonth' --format sql | grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2} 23:59:59"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - weekday names
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      # Find next Monday from 2024-01-01 (which is a Monday)
+      go run . -x 'monday' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - negative intervals
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-06-15 -3M' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-03-15 00:00:00"
+
+- name: expr - multiple format outputs
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      ts=$(go run . -x '2024-01-01T00:00:00' -tz UTC --format ts)
+      [ "$ts" = "1704067200" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - short flags
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01' -f sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-01-01 00:00:00"
+
+- name: expr - range with same start and end
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x 'today ... today' --format sql | grep -E "00:00:00 - [0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - empty pipeline
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-01-01 |' --format sql 2>&1 | grep -q -i "error\|failed" && echo "FAILED" || echo "PASSED"
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "FAILED"
+
+- name: expr - invalid date
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-13-01' --format sql 2>&1 | grep -q -i "error\|failed\|invalid" && echo "ERROR" || echo "OK"
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "ERROR"
+
+- name: expr - iteration exceeds range
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(go run . -x '2024-01-01 ... 2024-01-02' --each 1w --format sql | wc -l | tr -d ' ')
+      [ "$result" = "1" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: expr - combined legacy and new flags
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -b "2024/01/01 00:00:00" -f ts
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "1704063600"
 

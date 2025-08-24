@@ -13,6 +13,45 @@
 
 calcdate is a utility to make some basic operation on date. It's useful when need to calculate a range of date in order to make database request.
 
+## New Simplified Syntax (v2+) - BREAKING CHANGE
+
+calcdate now supports a much simpler, more intuitive expression syntax:
+
+```bash
+# Simple date calculations
+calcdate --expr "today +1d"                    # Tomorrow
+calcdate --expr "now +2h"                      # 2 hours from now
+calcdate --expr "yesterday"                    # Yesterday
+
+# Pipeline operations
+calcdate --expr "today | +1M | endOfMonth"     # Last day of next month
+calcdate --expr "now | +2h | round hour"       # 2 hours from now, rounded
+
+# Range operations with iterations
+calcdate --expr "today...+7d" --each=1d        # Each day for next week
+calcdate --expr "today...+30d" --each=1w --transform='$begin +8h, $end +20h'  # Business hours each week
+
+# Different output formats
+calcdate --expr "tomorrow" --format=iso        # 2024-01-16T00:00:00Z
+calcdate --expr "today" --format=sql           # 2024-01-15 00:00:00
+calcdate --expr "now" --format=ts              # 1705331400
+```
+
+### Quick Reference
+
+| Expression | Result |
+|------------|--------|
+| `today` | Start of today (00:00:00) |
+| `now` | Current date and time |
+| `tomorrow` | Start of tomorrow |
+| `today +1w` | One week from today |
+| `today \| endOfMonth` | Last day of current month |
+| `today...+7d` | Range from today to 7 days from now |
+
+## Legacy Syntax
+
+The original syntax is still fully supported:
+
 ```
 Usage of calcdate:
   -b string
@@ -32,6 +71,18 @@ Usage of calcdate:
   -tz string
         Timezone (default "Local")
   -v    Get version
+
+New Expression Flags:
+  -expr, -x string
+        Date expression (e.g., 'today +1d', 'now | +2h | round hour')
+  -each string
+        Iteration interval for ranges (e.g., '1d', '1w', '1M')
+  -transform, -t string
+        Transform expression for iterations (e.g., '$begin +8h, $end +20h')
+  -format, -f string
+        Output format: iso, sql, ts, human, compact, or custom Go format
+  -skip-weekends
+        Skip weekend days in iterations
 ```
 
 **Be careful, there is a breaking change after the version 0.5 (format is using % symbol).**
@@ -43,8 +94,50 @@ $ ./calcdate
 2020/09/14 23:15:10
 ```
 
+## New Expression Examples
 
-# Some examples 
+```bash
+# Basic date operations
+$ calcdate --expr "today"
+2024/01/15 00:00:00
+
+$ calcdate --expr "tomorrow"
+2024/01/16 00:00:00
+
+$ calcdate --expr "today +1w"
+2024/01/22 00:00:00
+
+# Boundary operations
+$ calcdate --expr "today | endOfMonth"
+2024/01/31 23:59:59
+
+$ calcdate --expr "today | startOfWeek"
+2024/01/15 00:00:00
+
+# Date ranges with iterations
+$ calcdate --expr "today...+7d" --each=1d
+2024/01/15 00:00:00 - 2024/01/16 00:00:00
+2024/01/16 00:00:00 - 2024/01/17 00:00:00
+...
+
+# Business hours (8am to 8pm each day)
+$ calcdate --expr "today...+7d" --each=1d --transform='$begin +8h, $end +20h'
+2024/01/15 08:00:00 - 2024/01/15 20:00:00
+2024/01/16 08:00:00 - 2024/01/16 20:00:00
+...
+
+# Different output formats
+$ calcdate --expr "today" --format=sql
+2024-01-15 00:00:00
+
+$ calcdate --expr "now" --format=ts
+1705331400
+
+$ calcdate --expr "tomorrow" --format=iso
+2024-01-16T00:00:00Z
+```
+
+# Legacy Examples 
 
 ```
 $ ./calcdate -b //-1      
