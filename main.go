@@ -87,7 +87,8 @@ func parseCommandLineFlags() cliConfig {
 	flag.BoolVar(&config.vOption, "v", false, "Get version")
 
 	// New expression flags
-	flag.StringVar(&config.expr, "expr", "", "Date expression (e.g., 'today +1d', 'now | +2h | round hour', 'today...+7d')")
+	flag.StringVar(&config.expr, "expr", "",
+		"Date expression (e.g., 'today +1d', 'now | +2h | round hour', 'today...+7d')")
 	flag.StringVar(&config.expr, "x", "", "Date expression (short form)")
 	flag.StringVar(&config.each, "each", "", "Iteration interval for ranges (e.g., '1d', '1w', '1M')")
 	flag.StringVar(&config.transform, "transform", "",
@@ -374,8 +375,8 @@ func formatOutput(t time.Time, format string, tz *time.Location) string {
 	case "compact":
 		return t.Format("20060102")
 	case "":
-		// Default format
-		return t.Format("2006/01/02 15:04:05")
+		// Default format (sql)
+		return t.Format("2006-01-02 15:04:05")
 	default:
 		// Custom format
 		return t.Format(format)
