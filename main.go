@@ -87,7 +87,7 @@ func parseCommandLineFlags() cliConfig {
 	flag.BoolVar(&config.vOption, "v", false, "Get version")
 
 	// New expression flags
-	flag.StringVar(&config.expr, "expr", "", "Date expression (e.g., 'today +1d', 'now | +2h | round hour')")
+	flag.StringVar(&config.expr, "expr", "", "Date expression (e.g., 'today +1d', 'now | +2h | round hour', 'today...+7d')")
 	flag.StringVar(&config.expr, "x", "", "Date expression (short form)")
 	flag.StringVar(&config.each, "each", "", "Iteration interval for ranges (e.g., '1d', '1w', '1M')")
 	flag.StringVar(&config.transform, "transform", "",
