@@ -263,6 +263,9 @@ func applyBoundaryOperation(date time.Time, op string, loc *time.Location) (oper
 	if result, ok := applyYearQuarterBoundaryOps(date, op, loc); ok {
 		return result, true
 	}
+	if result, ok := applyTimeBoundaryOps(date, op, loc); ok {
+		return result, true
+	}
 	return operationResult{}, false
 }
 
@@ -309,6 +312,25 @@ func applyYearQuarterBoundaryOps(date time.Time, op string, loc *time.Location) 
 		return operationResult{startOfQuarter(date, loc), nil}, true
 	case "endofquarter":
 		return operationResult{endOfQuarter(date, loc), nil}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyTimeBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	switch op {
+	case "startofhour":
+		return operationResult{startOfHour(date, loc), nil}, true
+	case "endofhour":
+		return operationResult{endOfHour(date, loc), nil}, true
+	case "startofminute":
+		return operationResult{startOfMinute(date, loc), nil}, true
+	case "endofminute":
+		return operationResult{endOfMinute(date, loc), nil}, true
+	case "startofsecond":
+		return operationResult{startOfSecond(date, loc), nil}, true
+	case "endofsecond":
+		return operationResult{endOfSecond(date, loc), nil}, true
 	default:
 		return operationResult{}, false
 	}
@@ -485,4 +507,31 @@ func truncateDate(t time.Time, unit string, loc *time.Location) (time.Time, erro
 	default:
 		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)
 	}
+}
+
+func startOfHour(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, loc)
+}
+
+func endOfHour(t time.Time, loc *time.Location) time.Time {
+	const maxNanos = 999999999
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 59, 59, maxNanos, loc)
+}
+
+func startOfMinute(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, loc)
+}
+
+func endOfMinute(t time.Time, loc *time.Location) time.Time {
+	const maxNanos = 999999999
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 59, maxNanos, loc)
+}
+
+func startOfSecond(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, loc)
+}
+
+func endOfSecond(t time.Time, loc *time.Location) time.Time {
+	const maxNanos = 999999999
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), maxNanos, loc)
 }

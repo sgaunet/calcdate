@@ -376,6 +376,106 @@ testcases:
     - result.code ShouldEqual 0
     - result.systemout ShouldContain "2024-12-31 23:59:59"
 
+- name: expr - startOfHour
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | startOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:00:00"
+
+- name: expr - endOfHour
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | endOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:59:59"
+
+- name: expr - startOfMinute
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | startOfMinute' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:34:00"
+
+- name: expr - endOfMinute
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | endOfMinute' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:34:59"
+
+- name: expr - startOfSecond
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | startOfSecond' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:34:45"
+
+- name: expr - endOfSecond
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | endOfSecond' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:34:45"
+
+- name: expr - chained time boundary operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 | startOfHour | endOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 12:59:59"
+
+- name: expr - time boundaries with arithmetic
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 12:34:45 +1d | endOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-31 12:59:59"
+
+- name: expr - time boundary edge cases
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-12-31 23:59:59 | startOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-12-31 23:00:00"
+
+- name: expr - midnight time boundaries
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run . -x '2024-08-30 00:00:00 | endOfHour' --format sql
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContain "2024-08-30 00:59:59"
+
 - name: expr - mixed pipeline operations
   steps:
   - type: exec

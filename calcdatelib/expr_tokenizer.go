@@ -334,6 +334,7 @@ func (t *Tokenizer) readKeywordOrDate() error {
 		"startOfDay", "endOfDay", "startOfWeek", "endOfWeek",
 		"startOfMonth", "endOfMonth", "startOfYear", "endOfYear",
 		"startOfQuarter", "endOfQuarter",
+		"startOfHour", "endOfHour", "startOfMinute", "endOfMinute", "startOfSecond", "endOfSecond",
 		"round", "trunc", "day", "time", "month", "year", "week", "quarter",
 		"hour", "minute", "second",
 	}
