@@ -9,6 +9,60 @@ testcases:
     assertions:
     - result.code ShouldEqual 0
 
+# Tests for stdin functionality
+- name: stdin - basic expression
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(echo "today" | go run . --format sql)
+      expected=$(date "+%Y-%m-%d 00:00:00")
+      [ "$result" = "$expected" ]
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: stdin - with operations
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      echo "today +1d" | go run . --format sql > /tmp/1
+      go run . -x "today +1d" --format sql > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: stdin - with format options
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      result=$(echo "now" | go run . --format iso)
+      # Check it matches ISO format pattern
+      echo "$result" | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*$"
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: stdin - range expression
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      echo "today...+2d" | go run . --each 1d --format sql | head -n 2 > /tmp/1
+      go run . -x "today...+2d" --each 1d --format sql | head -n 2 > /tmp/2
+      diff -q /tmp/1 /tmp/2
+    assertions:
+    - result.code ShouldEqual 0
+
+- name: stdin - empty input should fail
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      echo "" | go run . 2>&1 | grep -q "No expression provided"
+    assertions:
+    - result.code ShouldEqual 0
+
 # Tests for expression syntax
 - name: expr - today
   steps:

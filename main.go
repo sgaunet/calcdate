@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -19,6 +20,22 @@ func printVersion() {
 	fmt.Println(version)
 }
 
+// readExprFromStdin reads the date expression from stdin.
+// It reads the first non-empty line and returns it as the expression.
+func readExprFromStdin() (string, error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			return line, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error reading from stdin: %w", err)
+	}
+	return "", fmt.Errorf("no expression provided via stdin")
+}
+
 func main() {
 	config := parseCommandLineFlags()
 
@@ -32,11 +49,17 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Handle expression syntax (required)
+	// Handle expression syntax (required via parameter or stdin)
 	if config.expr == "" {
-		fmt.Fprintf(os.Stderr, "Error: -expr or -x parameter is required\n")
-		fmt.Fprintf(os.Stderr, "Use -h for help or see examples with -expr 'today'\n")
-		os.Exit(1)
+		// Try to read expression from stdin
+		var err error
+		config.expr, err = readExprFromStdin()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: No expression provided. Use -expr/-x parameter or provide via stdin\n")
+			fmt.Fprintf(os.Stderr, "Examples: calcdate -expr 'today' or echo 'today' | calcdate\n")
+			fmt.Fprintf(os.Stderr, "Use -h for more help\n")
+			os.Exit(1)
+		}
 	}
 
 	processExpressionMode(config.expr, config.each, config.transform, config.format, config.tz, config.skipWeekends)
