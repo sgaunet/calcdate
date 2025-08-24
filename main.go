@@ -94,7 +94,9 @@ func parseCommandLineFlags() cliConfig {
 	flag.StringVar(&config.transform, "transform", "",
 		"Transform expression for iterations (e.g., '$begin +8h, $end +20h')")
 	flag.StringVar(&config.transform, "t", "", "Transform expression (short form)")
-	flag.StringVar(&config.format, "format", "", "Output format: iso, sql, ts, human, compact, or custom Go format")
+	flag.StringVar(&config.format, "format", "",
+		"Output format: iso, sql, ts, human, compact, or Unix date format "+
+		"(e.g., '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S %Z')")
 	flag.StringVar(&config.format, "f", "", "Output format (short form)")
 	flag.BoolVar(&config.skipWeekends, "skip-weekends", false, "Skip weekend days in iterations")
 
@@ -378,7 +380,13 @@ func formatOutput(t time.Time, format string, tz *time.Location) string {
 		// Default format (sql)
 		return t.Format("2006-01-02 15:04:05")
 	default:
-		// Custom format
+		// Check if this is a Unix date format (contains %)
+		if strings.Contains(format, "%") {
+			// Convert Unix format to Go format
+			goFormat := calcdatelib.ConvertUnixFormatToGolang(format)
+			return t.Format(goFormat)
+		}
+		// Otherwise treat as Go format (backward compatibility)
 		return t.Format(format)
 	}
 }

@@ -35,6 +35,46 @@ func convertStdFormatToGolang(str string) string {
 	return res
 }
 
+// ConvertUnixFormatToGolang converts Unix date format specifiers to Go time format.
+func ConvertUnixFormatToGolang(str string) string {
+	res := str
+	
+	// Handle literal percent first (before any other % replacements)
+	res = strings.ReplaceAll(res, "%%", "\x00PERCENT\x00") // Use temporary placeholder
+	
+	// Core date/time formats
+	res = strings.ReplaceAll(res, "%Y", "2006")  // 4-digit year
+	res = strings.ReplaceAll(res, "%y", "06")    // 2-digit year
+	res = strings.ReplaceAll(res, "%m", "01")    // month (01-12)
+	res = strings.ReplaceAll(res, "%d", "02")    // day (01-31)
+	res = strings.ReplaceAll(res, "%H", "15")    // hour 24-format (00-23)
+	res = strings.ReplaceAll(res, "%I", "03")    // hour 12-format (01-12)
+	res = strings.ReplaceAll(res, "%M", "04")    // minute (00-59)
+	res = strings.ReplaceAll(res, "%S", "05")    // second (00-59)
+	res = strings.ReplaceAll(res, "%p", "PM")    // AM/PM
+	
+	// Weekday formats
+	res = strings.ReplaceAll(res, "%a", "Mon")      // short weekday name
+	res = strings.ReplaceAll(res, "%A", "Monday")   // full weekday name
+	
+	// Month formats
+	res = strings.ReplaceAll(res, "%b", "Jan")      // short month name
+	res = strings.ReplaceAll(res, "%B", "January")  // full month name
+	
+	// Timezone formats
+	res = strings.ReplaceAll(res, "%z", "-0700")    // numeric timezone offset
+	res = strings.ReplaceAll(res, "%Z", "MST")      // timezone name
+	
+	// Additional common formats
+	res = strings.ReplaceAll(res, "%j", "002")      // day of year (001-366)
+	// Note: %w and %u (weekday numbers) don't have direct Go equivalents
+	
+	// Restore literal percent at the end
+	res = strings.ReplaceAll(res, "\x00PERCENT\x00", "%")
+	
+	return res
+}
+
 // createRegexpFromIfmt creates a regular expression pattern from input format.
 func createRegexpFromIfmt(ifmt string) string {
 	r := strings.ReplaceAll(ifmt, "%YYYY", "(?P<Year>([\\+-]?\\d+)?)")

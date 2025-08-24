@@ -28,6 +28,79 @@ func TestConvertStdFormatToGolang(t *testing.T) {
 	}
 }
 
+func TestConvertUnixFormatToGolang(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Basic date format",
+			input:    "%Y-%m-%d",
+			expected: "2006-01-02",
+		},
+		{
+			name:     "Basic date and time format",
+			input:    "%Y-%m-%d %H:%M:%S",
+			expected: "2006-01-02 15:04:05",
+		},
+		{
+			name:     "12-hour format with AM/PM",
+			input:    "%Y-%m-%d %I:%M:%S %p",
+			expected: "2006-01-02 03:04:05 PM",
+		},
+		{
+			name:     "Short weekday and month",
+			input:    "%a, %b %d, %Y",
+			expected: "Mon, Jan 02, 2006",
+		},
+		{
+			name:     "Full weekday and month",
+			input:    "%A, %B %d, %Y",
+			expected: "Monday, January 02, 2006",
+		},
+		{
+			name:     "Timezone formats",
+			input:    "%Y-%m-%d %H:%M:%S %Z %z",
+			expected: "2006-01-02 15:04:05 MST -0700",
+		},
+		{
+			name:     "2-digit year",
+			input:    "%y/%m/%d",
+			expected: "06/01/02",
+		},
+		{
+			name:     "Mixed formats",
+			input:    "%A, %B %d, %Y at %I:%M %p",
+			expected: "Monday, January 02, 2006 at 03:04 PM",
+		},
+		{
+			name:     "Day of year",
+			input:    "Day %j of year %Y", 
+			expected: "Day 002 of year 2006",
+		},
+		{
+			name:     "Literal percent",
+			input:    "Test %% literal on %Y-%m-%d",
+			expected: "Test % literal on 2006-01-02",
+		},
+		{
+			name:     "No Unix formats (passthrough)",
+			input:    "2006-01-02 15:04:05",
+			expected: "2006-01-02 15:04:05",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ConvertUnixFormatToGolang(tt.input)
+			if result != tt.expected {
+				t.Errorf("ConvertUnixFormatToGolang(%q) = %q; want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestDayInMonth1(t *testing.T) {
 	if DayInMonth(2020, 1) != 31 {
 		t.Error("01/2020 => 31 days VS", DayInMonth(2020, 1))
