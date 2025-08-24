@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,21 +12,6 @@ import (
 	"github.com/sgaunet/calcdate/v2/calcdatelib"
 )
 
-func completeDate(adate string) string {
-	resDate := adate
-	// If date format is like "HH:MM:SS" without date part, add "//" prefix
-	r := regexp.MustCompile(`^(\+|-)*[0-9]*:(\+|-)*[0-9]*:(\+|-)*[0-9]*$`)
-	if r.MatchString(resDate) {
-		resDate = "// " + resDate
-	}
-
-	// If date is like "YYYY/MM/DD" without time part, add "::" time part
-	r = regexp.MustCompile(`^(\+|-)*[0-9]*/(\+|-)*[0-9]*/(\+|-)*[0-9]*$`)
-	if r.MatchString(resDate) {
-		resDate += " ::"
-	}
-	return resDate
-}
 
 var version = "development"
 
@@ -48,41 +32,27 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Handle new expression syntax
-	if config.expr != "" {
-		processExpressionMode(config.expr, config.each, config.transform, config.format, config.tz, config.skipWeekends)
-		return
+	// Handle expression syntax (required)
+	if config.expr == "" {
+		fmt.Fprintf(os.Stderr, "Error: -expr or -x parameter is required\n")
+		fmt.Fprintf(os.Stderr, "Use -h for help or see examples with -expr 'today'\n")
+		os.Exit(1)
 	}
 
-	processLegacyMode(config)
+	processExpressionMode(config.expr, config.each, config.transform, config.format, config.tz, config.skipWeekends)
 }
 
 type cliConfig struct {
-	begindate, enddate, separator, ifmt, ofmt, tz string
+	tz                                            string
 	expr, each, transform, format                 string
 	vOption, listTZ, skipWeekends                 bool
-	interval                                      time.Duration
-	tmpl                                          string
 }
 
 func parseCommandLineFlags() cliConfig {
 	var config cliConfig
 
-	// Legacy flags
-	flag.StringVar(&config.begindate, "b", "// ::", "Begin date")
-	flag.StringVar(&config.enddate, "e", "", "End date")
-	flag.StringVar(&config.separator, "s", " ", "Separator")
+	// Legacy flags (kept)
 	flag.StringVar(&config.tz, "tz", "Local", "Input timezone")
-	flag.StringVar(&config.ifmt, "ifmt", "%YYYY/%MM/%DD %hh:%mm:%ss", "Input Format (%YYYY/%MM/%DD %hh:%mm:%ss)")
-	// Define output format with timestamp and timezone support
-	flag.StringVar(&config.ofmt, "ofmt", "%YYYY/%MM/%DD %hh:%mm:%ss",
-		"Input Format (%YYYY/%MM/%DD %hh:%mm:%ss), use @ts for timestamp %z for offset %Z for timezone")
-	flag.DurationVar(&config.interval, "i", 0, "Interval (Ex: 1m or 1h or 15s)")
-	// Define default template for interval rendering
-	defaultTemplate := "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - "
-	defaultTemplate += "{{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} "
-	defaultTemplate += "{{ .BeginTime.Unix }} {{ .EndTime.Unix }}"
-	flag.StringVar(&config.tmpl, "tmpl", defaultTemplate, "Used only with -i option")
 	flag.BoolVar(&config.listTZ, "list-tz", false, "List timezones")
 	flag.BoolVar(&config.vOption, "v", false, "Get version")
 
@@ -104,41 +74,6 @@ func parseCommandLineFlags() cliConfig {
 	return config
 }
 
-func processLegacyMode(config cliConfig) {
-	rangeDate := config.enddate != "" && config.begindate != ""
-
-	// -i option can be used only with two dates (begin/end)
-	if config.interval != 0 && !rangeDate {
-		fmt.Println("specify a range date")
-		os.Exit(1)
-	}
-
-	config.begindate = completeDate(config.begindate)
-	config.enddate = completeDate(config.enddate)
-
-	beginTime, err := calcdatelib.NewDate(config.begindate, config.ifmt, config.tz)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Format date begindate KO: %v\n", err)
-		os.Exit(1)
-	}
-
-	if rangeDate {
-		processRangeDateCase(config.begindate, config.enddate, config.ifmt, config.tz,
-			config.interval, config.ofmt, config.separator, config.tmpl, config.format)
-	} else {
-		printSingleDate(beginTime, config.format, config.ofmt, config.tz)
-	}
-}
-
-func printSingleDate(beginTime *calcdatelib.Date, format, ofmt, tz string) {
-	if format != "" {
-		loc, _ := time.LoadLocation(tz)
-		output := formatOutput(beginTime.Time(), format, loc)
-		fmt.Println(output)
-	} else {
-		fmt.Println(beginTime.Format(ofmt))
-	}
-}
 
 // processExpressionMode handles the new expression syntax.
 func processExpressionMode(expr, each, transform, format, tzStr string, skipWeekends bool) {
@@ -404,56 +339,3 @@ func isWeekend(t time.Time) bool {
 	return weekday == time.Saturday || weekday == time.Sunday
 }
 
-// processRangeDateCase handles the logic for date range processing
-// processRangeDateCase handles date ranges with optional interval processing.
-func processRangeDateCase(
-	begindate, enddate, ifmt, tz string,
-	interval time.Duration,
-	ofmt, separator, tmpl, format string,
-) {
-	beginTime, endTime := parseBeginEndDates(begindate, enddate, ifmt, tz)
-
-	if interval == 0 {
-		printDateRange(beginTime, endTime, format, ofmt, separator, tz)
-	} else {
-		printIntervalLines(beginTime, endTime, interval, tmpl)
-	}
-}
-
-func parseBeginEndDates(begindate, enddate, ifmt, tz string) (*calcdatelib.Date, *calcdatelib.Date) {
-	beginTime, err := calcdatelib.NewDate(begindate, ifmt, tz)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-	endTime, err := calcdatelib.NewDate(enddate, ifmt, tz)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-	endTime.SetEndDate()
-	beginTime.SetBeginDate()
-	return beginTime, endTime
-}
-
-func printDateRange(beginTime, endTime *calcdatelib.Date, format, ofmt, separator, tz string) {
-	if format != "" {
-		loc, _ := time.LoadLocation(tz)
-		beginStr := formatOutput(beginTime.Time(), format, loc)
-		endStr := formatOutput(endTime.Time(), format, loc)
-		fmt.Printf("%s%s%s\n", beginStr, separator, endStr)
-	} else {
-		fmt.Printf("%s%s%s\n", beginTime.Format(ofmt), separator, endTime.Format(ofmt))
-	}
-}
-
-func printIntervalLines(beginTime, endTime *calcdatelib.Date, interval time.Duration, tmpl string) {
-	intervals, err := calcdatelib.RenderIntervalLines(*beginTime, *endTime, interval, tmpl)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-	for idx := range intervals {
-		fmt.Println(intervals[idx])
-	}
-}
