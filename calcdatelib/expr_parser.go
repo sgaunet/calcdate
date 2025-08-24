@@ -5,18 +5,19 @@ import (
 	"strings"
 )
 
-// ExprParser parses date expressions
+// ExprParser parses date expressions.
 type ExprParser struct {
 	tokens []Token
 	pos    int
 }
 
-// NewExprParser creates a new expression parser
-func NewExprParser(input string) *ExprParser {
+// NewExprParser creates a new expression parser.
+func NewExprParser(_ string) *ExprParser {
 	return &ExprParser{}
 }
 
 // Parse parses a date expression string
+//nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) Parse(input string) (ExprNode, error) {
 	// Tokenize input
 	tokenizer := NewTokenizer(input)
@@ -31,12 +32,12 @@ func (p *ExprParser) Parse(input string) (ExprNode, error) {
 	return p.parseExpression()
 }
 
-// ParseTransform parses a transform expression with comma-separated begin and end expressions
+// ParseTransform parses a transform expression with comma-separated begin and end expressions.
 func (p *ExprParser) ParseTransform(input string) (*TransformNode, error) {
 	// Split by comma to get begin and end expressions
 	parts := strings.Split(input, ",")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("transform must have exactly two parts separated by comma")
+	if len(parts) != TransformParts {
+		return nil, ErrTransformPartsInvalid
 	}
 	
 	// Parse begin expression
@@ -57,6 +58,7 @@ func (p *ExprParser) ParseTransform(input string) (*TransformNode, error) {
 	}, nil
 }
 
+//nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parseExpression() (ExprNode, error) {
 	// Check for range expression (date...date)
 	node, err := p.parsePrimary()
@@ -66,19 +68,7 @@ func (p *ExprParser) parseExpression() (ExprNode, error) {
 	
 	// Check for range operator
 	if p.current().Type == TokenRange {
-		p.advance()
-		endNode, err := p.parsePrimary()
-		if err != nil {
-			return nil, err
-		}
-		rangeNode := &RangeNode{Start: node, End: endNode}
-		
-		// Check for pipe operations after the range
-		if p.current().Type == TokenPipe {
-			return p.parsePipeline(rangeNode)
-		}
-		
-		return rangeNode, nil
+		return p.parseRangeExpression(node)
 	}
 	
 	// Check for pipe operations
@@ -86,9 +76,31 @@ func (p *ExprParser) parseExpression() (ExprNode, error) {
 		return p.parsePipeline(node)
 	}
 	
-	// Check for operations without pipe (e.g., "today +1d")
+	// Check for operations without pipe
+	return p.parseOperationsAfterNode(node)
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseRangeExpression(startNode ExprNode) (ExprNode, error) {
+	p.advance() // consume range operator
+	endNode, err := p.parsePrimary()
+	if err != nil {
+		return nil, err
+	}
+	rangeNode := &RangeNode{Start: startNode, End: endNode}
+	
+	// Check for pipe operations after the range
+	if p.current().Type == TokenPipe {
+		return p.parsePipeline(rangeNode)
+	}
+	
+	return rangeNode, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseOperationsAfterNode(node ExprNode) (ExprNode, error) {
 	ops := []ExprNode{}
-	for p.current().Type == TokenOperator || p.current().Type == TokenUnit || p.current().Type == TokenKeyword {
+	for p.isOperationToken() {
 		op, err := p.parseOperation()
 		if err != nil {
 			return nil, err
@@ -110,6 +122,12 @@ func (p *ExprParser) parseExpression() (ExprNode, error) {
 	return node, nil
 }
 
+func (p *ExprParser) isOperationToken() bool {
+	t := p.current().Type
+	return t == TokenOperator || t == TokenUnit || t == TokenKeyword
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parsePipeline(base ExprNode) (ExprNode, error) {
 	operations := []ExprNode{}
 	
@@ -123,8 +141,8 @@ func (p *ExprParser) parsePipeline(base ExprNode) (ExprNode, error) {
 		}
 		operations = append(operations, op)
 		
-		// Continue parsing operations without pipe (e.g., "| endOfMonth +1d +1s")
-		for p.current().Type == TokenOperator || p.current().Type == TokenUnit || p.current().Type == TokenKeyword {
+		// Continue parsing operations without pipe
+		for p.isOperationToken() {
 			op, err := p.parseOperation()
 			if err != nil {
 				return nil, err
@@ -136,110 +154,155 @@ func (p *ExprParser) parsePipeline(base ExprNode) (ExprNode, error) {
 	return &PipeNode{Base: base, Operations: operations}, nil
 }
 
+//nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parsePrimary() (ExprNode, error) {
 	token := p.current()
 	
 	switch token.Type {
 	case TokenVariable:
-		p.advance()
-		return &VariableNode{Name: token.Value}, nil
-		
+		return p.parseVariableToken(token)
 	case TokenKeyword:
-		// Check if it's a date keyword (today, now, yesterday, tomorrow, weekday names)
-		dateKeywords := []string{"today", "now", "yesterday", "tomorrow", 
-			"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
-		for _, kw := range dateKeywords {
-			if token.Value == kw {
-				p.advance()
-				return &DateNode{Value: token.Value}, nil
-			}
-		}
-		// Otherwise it's an operation keyword
-		return p.parseOperation()
-		
-	case TokenDate:
-		p.advance()
-		return &DateNode{Value: token.Value}, nil
-		
-	case TokenTime:
-		p.advance()
-		return &DateNode{Value: token.Value}, nil
-		
+		return p.parseKeywordToken(token)
+	case TokenDate, TokenTime:
+		return p.parseDateTimeToken(token)
 	case TokenOperator, TokenUnit:
-		// Relative date like "+1d" or "-2w"
-		p.advance()
-		return &DateNode{Value: token.Value}, nil
-		
+		return p.parseOperatorUnitToken(token)
 	case TokenEOF:
-		return nil, fmt.Errorf("unexpected end of expression")
-		
+		return nil, ErrUnexpectedEndOfExpression
+	case TokenPipe, TokenRange, TokenNumber, TokenComma, TokenLParen, TokenRParen:
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedToken, token)
 	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedToken, token)
 	}
 }
 
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseVariableToken(token Token) (ExprNode, error) {
+	p.advance()
+	return &VariableNode{Name: token.Value}, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseKeywordToken(token Token) (ExprNode, error) {
+	// Check if it's a date keyword
+	dateKeywords := []string{"today", "now", "yesterday", "tomorrow", 
+		"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
+	for _, kw := range dateKeywords {
+		if token.Value == kw {
+			p.advance()
+			return &DateNode{Value: token.Value}, nil
+		}
+	}
+	// Otherwise it's an operation keyword
+	return p.parseOperation()
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseDateTimeToken(token Token) (ExprNode, error) {
+	p.advance()
+	return &DateNode{Value: token.Value}, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseOperatorUnitToken(token Token) (ExprNode, error) {
+	// Relative date like "+1d" or "-2w"
+	p.advance()
+	return &DateNode{Value: token.Value}, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parseOperation() (ExprNode, error) {
 	token := p.current()
 	
 	switch token.Type {
 	case TokenOperator:
-		// Operator followed by unit (e.g., "+1d", "-2w")
-		op := token.Value
-		p.advance()
-		
-		if p.current().Type != TokenUnit && p.current().Type != TokenNumber {
-			return nil, fmt.Errorf("expected unit or number after operator %s", op)
-		}
-		
+		return p.parseOperatorOperation(token)
+	case TokenUnit:
+		return p.parseUnitOperation(token)
+	case TokenKeyword:
+		return p.parseKeywordOperation(token)
+	case TokenEOF, TokenDate, TokenPipe, TokenRange, TokenVariable,
+		TokenNumber, TokenTime, TokenComma, TokenLParen, TokenRParen:
+		return nil, fmt.Errorf("%w: got %v", ErrExpectedOperationAfterPipe, token)
+	default:
+		return nil, fmt.Errorf("%w: got %v", ErrExpectedOperationAfterPipe, token)
+	}
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseOperatorOperation(token Token) (ExprNode, error) {
+	op := token.Value
+	p.advance()
+	
+	if p.current().Type != TokenUnit && p.current().Type != TokenNumber {
+		return nil, fmt.Errorf("%w %s", ErrExpectedUnitAfterOperator, op)
+	}
+	
+	value := p.current().Value
+	p.advance()
+	
+	return &OperationNode{Op: op, Value: value}, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseUnitOperation(token Token) (ExprNode, error) {
+	value := token.Value
+	p.advance()
+	
+	// Determine operator from the value
+	op := "+"
+	if strings.HasPrefix(value, "-") {
+		op = "-"
+		value = value[1:]
+	} else if strings.HasPrefix(value, "+") {
+		value = value[1:]
+	}
+	
+	return &OperationNode{Op: op, Value: value}, nil
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseKeywordOperation(token Token) (ExprNode, error) {
+	keyword := token.Value
+	p.advance()
+	
+	// Check for operations that take arguments
+	if p.isArgumentOperation(keyword) {
+		return p.parseArgumentOperation(keyword)
+	}
+	
+	// Boundary operations (startOf*, endOf*)
+	if p.isBoundaryOperation(keyword) {
+		return &OperationNode{Op: keyword, Value: ""}, nil
+	}
+	
+	return nil, fmt.Errorf("%w: %s", ErrUnknownOperation, keyword)
+}
+
+func (p *ExprParser) isArgumentOperation(keyword string) bool {
+	const (
+		dayKeyword   = "day"
+		timeKeyword  = "time"
+		roundKeyword = "round"
+		truncKeyword = "trunc"
+	)
+	return keyword == dayKeyword || keyword == timeKeyword || keyword == roundKeyword || keyword == truncKeyword
+}
+
+func (p *ExprParser) isBoundaryOperation(keyword string) bool {
+	return strings.HasPrefix(keyword, "startof") || strings.HasPrefix(keyword, "endof") ||
+		keyword == "start" || keyword == "end"
+}
+
+//nolint:ireturn // returns interface by design for AST nodes
+func (p *ExprParser) parseArgumentOperation(keyword string) (ExprNode, error) {
+	if p.current().Type == TokenNumber || p.current().Type == TokenTime || p.current().Type == TokenKeyword {
 		value := p.current().Value
 		p.advance()
-		
-		// Combine operator and value
-		return &OperationNode{Op: op, Value: value}, nil
-		
-	case TokenUnit:
-		// Direct unit like "1d", "+2w"
-		value := token.Value
-		p.advance()
-		
-		// Determine operator from the value
-		op := "+"
-		if strings.HasPrefix(value, "-") {
-			op = "-"
-			value = value[1:]
-		} else if strings.HasPrefix(value, "+") {
-			value = value[1:]
-		}
-		
-		return &OperationNode{Op: op, Value: value}, nil
-		
-	case TokenKeyword:
-		keyword := token.Value
-		p.advance()
-		
-		// Check for operations that take arguments
-		if keyword == "day" || keyword == "time" || keyword == "round" || keyword == "trunc" {
-			// These operations expect an argument
-			if p.current().Type == TokenNumber || p.current().Type == TokenTime || p.current().Type == TokenKeyword {
-				value := p.current().Value
-				p.advance()
-				return &OperationNode{Op: keyword, Value: value}, nil
-			}
-			// If no argument, use default
-			return &OperationNode{Op: keyword, Value: ""}, nil
-		}
-		
-		// Boundary operations (startOf*, endOf*)
-		if strings.HasPrefix(keyword, "startof") || strings.HasPrefix(keyword, "endof") ||
-		   keyword == "start" || keyword == "end" {
-			return &OperationNode{Op: keyword, Value: ""}, nil
-		}
-		
-		return nil, fmt.Errorf("unknown operation keyword: %s", keyword)
-		
-	default:
-		return nil, fmt.Errorf("expected operation, got %v", token)
+		return &OperationNode{Op: keyword, Value: value}, nil
 	}
+	// If no argument, use default
+	return &OperationNode{Op: keyword, Value: ""}, nil
 }
 
 func (p *ExprParser) current() Token {
@@ -255,6 +318,8 @@ func (p *ExprParser) advance() {
 	}
 }
 
+// peek returns the next token without advancing
+//nolint:unused // may be used in future
 func (p *ExprParser) peek() Token {
 	if p.pos+1 >= len(p.tokens) {
 		return Token{Type: TokenEOF}

@@ -6,9 +6,10 @@ import (
 	"unicode"
 )
 
-// TokenType represents the type of a token
+// TokenType represents the type of a token.
 type TokenType int
 
+// Token types for expression parsing.
 const (
 	TokenEOF TokenType = iota
 	TokenDate
@@ -25,21 +26,21 @@ const (
 	TokenRParen
 )
 
-// Token represents a lexical token
+// Token represents a lexical token.
 type Token struct {
 	Type  TokenType
 	Value string
 	Pos   int
 }
 
-// Tokenizer tokenizes date expressions
+// Tokenizer tokenizes date expressions.
 type Tokenizer struct {
 	input string
 	pos   int
 	tokens []Token
 }
 
-// NewTokenizer creates a new tokenizer
+// NewTokenizer creates a new tokenizer.
 func NewTokenizer(input string) *Tokenizer {
 	return &Tokenizer{
 		input: input,
@@ -48,7 +49,7 @@ func NewTokenizer(input string) *Tokenizer {
 	}
 }
 
-// Tokenize tokenizes the input string
+// Tokenize tokenizes the input string.
 func (t *Tokenizer) Tokenize() ([]Token, error) {
 	for t.pos < len(t.input) {
 		if err := t.nextToken(); err != nil {
@@ -60,10 +61,7 @@ func (t *Tokenizer) Tokenize() ([]Token, error) {
 }
 
 func (t *Tokenizer) nextToken() error {
-	// Skip whitespace
-	for t.pos < len(t.input) && unicode.IsSpace(rune(t.input[t.pos])) {
-		t.pos++
-	}
+	t.skipWhitespace()
 
 	if t.pos >= len(t.input) {
 		return nil
@@ -72,42 +70,46 @@ func (t *Tokenizer) nextToken() error {
 	startPos := t.pos
 	ch := t.input[t.pos]
 
+	// Handle single character tokens
+	if tokenType, isSingle := t.getSingleCharToken(ch); isSingle {
+		t.tokens = append(t.tokens, Token{Type: tokenType, Value: string(ch), Pos: startPos})
+		t.pos++
+		return nil
+	}
+
+	// Handle special cases
+	return t.handleSpecialChar(ch, startPos)
+}
+
+func (t *Tokenizer) skipWhitespace() {
+	for t.pos < len(t.input) && unicode.IsSpace(rune(t.input[t.pos])) {
+		t.pos++
+	}
+}
+
+func (t *Tokenizer) getSingleCharToken(ch byte) (TokenType, bool) {
 	switch ch {
 	case '|':
-		t.tokens = append(t.tokens, Token{Type: TokenPipe, Value: "|", Pos: startPos})
-		t.pos++
-		return nil
+		return TokenPipe, true
 	case ',':
-		t.tokens = append(t.tokens, Token{Type: TokenComma, Value: ",", Pos: startPos})
-		t.pos++
-		return nil
+		return TokenComma, true
 	case '(':
-		t.tokens = append(t.tokens, Token{Type: TokenLParen, Value: "(", Pos: startPos})
-		t.pos++
-		return nil
+		return TokenLParen, true
 	case ')':
-		t.tokens = append(t.tokens, Token{Type: TokenRParen, Value: ")", Pos: startPos})
-		t.pos++
-		return nil
+		return TokenRParen, true
+	default:
+		return TokenEOF, false
+	}
+}
+
+func (t *Tokenizer) handleSpecialChar(ch byte, startPos int) error {
+	switch ch {
 	case '+', '-':
-		// Could be operator or part of a date/time
-		if t.pos+1 < len(t.input) && unicode.IsDigit(rune(t.input[t.pos+1])) {
-			return t.readNumberWithUnit()
-		}
-		t.tokens = append(t.tokens, Token{Type: TokenOperator, Value: string(ch), Pos: startPos})
-		t.pos++
-		return nil
+		return t.handlePlusMinusToken(ch, startPos)
 	case '$':
-		// Variable
 		return t.readVariable()
 	case '.':
-		// Check for range operator ...
-		if t.pos+2 < len(t.input) && t.input[t.pos:t.pos+3] == "..." {
-			t.tokens = append(t.tokens, Token{Type: TokenRange, Value: "...", Pos: startPos})
-			t.pos += 3
-			return nil
-		}
-		return fmt.Errorf("unexpected character '.' at position %d", t.pos)
+		return t.handleDotToken(startPos)
 	default:
 		if unicode.IsDigit(rune(ch)) {
 			return t.readDateOrNumberWithUnit()
@@ -115,8 +117,26 @@ func (t *Tokenizer) nextToken() error {
 		if unicode.IsLetter(rune(ch)) {
 			return t.readKeywordOrDate()
 		}
-		return fmt.Errorf("unexpected character '%c' at position %d", ch, t.pos)
+		return fmt.Errorf("%w: '%c' at position %d", ErrUnexpectedCharacter, ch, t.pos)
 	}
+}
+
+func (t *Tokenizer) handlePlusMinusToken(ch byte, startPos int) error {
+	if t.pos+1 < len(t.input) && unicode.IsDigit(rune(t.input[t.pos+1])) {
+		return t.readNumberWithUnit()
+	}
+	t.tokens = append(t.tokens, Token{Type: TokenOperator, Value: string(ch), Pos: startPos})
+	t.pos++
+	return nil
+}
+
+func (t *Tokenizer) handleDotToken(startPos int) error {
+	if t.pos+2 < len(t.input) && t.input[t.pos:t.pos+3] == "..." {
+		t.tokens = append(t.tokens, Token{Type: TokenRange, Value: "...", Pos: startPos})
+		t.pos += 3
+		return nil
+	}
+	return fmt.Errorf("%w: '.' at position %d", ErrUnexpectedCharacter, t.pos)
 }
 
 func (t *Tokenizer) readVariable() error {
@@ -135,27 +155,36 @@ func (t *Tokenizer) readVariable() error {
 func (t *Tokenizer) readNumberWithUnit() error {
 	startPos := t.pos
 	
-	// Read sign if present
-	if t.pos < len(t.input) && (t.input[t.pos] == '+' || t.input[t.pos] == '-') {
-		t.pos++
-	}
-	
-	// Read number
-	for t.pos < len(t.input) && unicode.IsDigit(rune(t.input[t.pos])) {
-		t.pos++
-	}
-	
-	// Read unit if present (d, w, M, Y, h, m, s, q)
-	if t.pos < len(t.input) {
-		ch := t.input[t.pos]
-		if ch == 'd' || ch == 'w' || ch == 'M' || ch == 'Y' || ch == 'h' || ch == 'm' || ch == 's' || ch == 'q' {
-			t.pos++
-		}
-	}
+	t.readSign()
+	t.readDigits()
+	t.readUnit()
 	
 	value := t.input[startPos:t.pos]
 	t.tokens = append(t.tokens, Token{Type: TokenUnit, Value: value, Pos: startPos})
 	return nil
+}
+
+func (t *Tokenizer) readSign() {
+	if t.pos < len(t.input) && (t.input[t.pos] == '+' || t.input[t.pos] == '-') {
+		t.pos++
+	}
+}
+
+func (t *Tokenizer) readDigits() {
+	for t.pos < len(t.input) && unicode.IsDigit(rune(t.input[t.pos])) {
+		t.pos++
+	}
+}
+
+func (t *Tokenizer) readUnit() {
+	if t.pos < len(t.input) && t.isUnitChar(t.input[t.pos]) {
+		t.pos++
+	}
+}
+
+func (t *Tokenizer) isUnitChar(ch byte) bool {
+	return ch == 'd' || ch == 'w' || ch == 'M' || ch == 'Y' || 
+		ch == 'h' || ch == 'm' || ch == 's' || ch == 'q'
 }
 
 func (t *Tokenizer) readDateOrNumberWithUnit() error {
@@ -178,7 +207,8 @@ func (t *Tokenizer) isISODate() bool {
 		return false
 	}
 	
-	str := t.input[t.pos:min(t.pos+10, len(t.input))]
+	const isoDateLength = 10
+	str := t.input[t.pos:minInt(t.pos+isoDateLength, len(t.input))]
 	if len(str) >= 10 && str[4] == '-' && str[7] == '-' {
 		return true
 	}
@@ -189,47 +219,69 @@ func (t *Tokenizer) readISODate() error {
 	startPos := t.pos
 	
 	// Read YYYY-MM-DD
-	t.pos += 10
+	const datePartLength = 10
+	t.pos += datePartLength
 	
 	// Check for optional time part
-	if t.pos < len(t.input) && (t.input[t.pos] == 'T' || t.input[t.pos] == ' ') {
-		hasTimePart := false
-		// Verify it's actually a time (HH:MM pattern) before consuming
-		if t.pos+3 <= len(t.input) && t.input[t.pos+3] == ':' {
-			t.pos++
-			// Read time part HH:MM:SS
-			if t.pos+8 <= len(t.input) {
-				t.pos += 8
-			}
-			hasTimePart = true
-		} else if t.input[t.pos] == 'T' {
-			// If it's 'T', still advance and try to read time
-			t.pos++
-			// Read time part HH:MM:SS
-			if t.pos+8 <= len(t.input) {
-				t.pos += 8
-			}
-			hasTimePart = true
-		}
-		// Otherwise, don't consume the space as it's not a time part
-		
-		// Check for optional timezone (only if we read a time part)
-		if hasTimePart && t.pos < len(t.input) && (t.input[t.pos] == 'Z' || t.input[t.pos] == '+' || t.input[t.pos] == '-') {
-			if t.input[t.pos] == 'Z' {
-				t.pos++
-			} else {
-				// Read timezone offset
-				t.pos++
-				for t.pos < len(t.input) && (unicode.IsDigit(rune(t.input[t.pos])) || t.input[t.pos] == ':') {
-					t.pos++
-				}
-			}
-		}
+	hasTimePart := t.readOptionalTimePart()
+	
+	// Check for optional timezone (only if we read a time part)
+	if hasTimePart {
+		t.readOptionalTimezone()
 	}
 	
 	value := t.input[startPos:t.pos]
 	t.tokens = append(t.tokens, Token{Type: TokenDate, Value: value, Pos: startPos})
 	return nil
+}
+
+func (t *Tokenizer) readOptionalTimePart() bool {
+	if t.pos >= len(t.input) || (t.input[t.pos] != 'T' && t.input[t.pos] != ' ') {
+		return false
+	}
+	
+	return t.tryReadTimePart()
+}
+
+func (t *Tokenizer) tryReadTimePart() bool {
+	const timePatternOffset = 3
+	const timePartLength = 8
+	
+	// Verify it's actually a time (HH:MM pattern) before consuming
+	if t.pos+timePatternOffset <= len(t.input) && t.input[t.pos+timePatternOffset] == ':' {
+		t.pos++
+		if t.pos+timePartLength <= len(t.input) {
+			t.pos += timePartLength
+		}
+		return true
+	}
+	
+	if t.input[t.pos] == 'T' {
+		t.pos++
+		if t.pos+timePartLength <= len(t.input) {
+			t.pos += timePartLength
+		}
+		return true
+	}
+	
+	return false
+}
+
+func (t *Tokenizer) readOptionalTimezone() {
+	if t.pos >= len(t.input) {
+		return
+	}
+	
+	ch := t.input[t.pos]
+	switch ch {
+	case 'Z':
+		t.pos++
+	case '+', '-':
+		t.pos++
+		for t.pos < len(t.input) && (unicode.IsDigit(rune(t.input[t.pos])) || t.input[t.pos] == ':') {
+			t.pos++
+		}
+	}
 }
 
 func (t *Tokenizer) isTime() bool {
@@ -239,7 +291,8 @@ func (t *Tokenizer) isTime() bool {
 	}
 	
 	// Simple check for time pattern
-	str := t.input[t.pos:min(t.pos+8, len(t.input))]
+	const maxTimeLength = 8
+	str := t.input[t.pos:minInt(t.pos+maxTimeLength, len(t.input))]
 	if len(str) >= 5 && str[2] == ':' {
 		return true
 	}
@@ -297,7 +350,8 @@ func (t *Tokenizer) readKeywordOrDate() error {
 	return nil
 }
 
-func min(a, b int) int {
+// minInt returns the minimum of two integers.
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

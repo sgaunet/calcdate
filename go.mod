@@ -1,4 +1,4 @@
-module github.com/sgaunet/calcdate
+module github.com/sgaunet/calcdate/v2
 
 go 1.24
 

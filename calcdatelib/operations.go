@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// ParseDateValue parses a date value string into a time.Time
+// ParseDateValue parses a date value string into a time.Time.
 func ParseDateValue(value string, ctx *EvalContext) (time.Time, error) {
 	now := ctx.Now
 	if now.IsZero() {
@@ -16,23 +16,15 @@ func ParseDateValue(value string, ctx *EvalContext) (time.Time, error) {
 	
 	loc := ctx.Timezone
 	if loc == nil {
-		loc = time.Local
+		loc = time.Local //nolint:gosmopolitan // intentional default to local timezone
 	}
 	
 	// Adjust now to the specified timezone
 	now = now.In(loc)
 	
-	switch strings.ToLower(value) {
-	case "today":
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), nil
-	case "now":
-		return now, nil
-	case "yesterday":
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -1), nil
-	case "tomorrow":
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, 1), nil
-	case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
-		return nextWeekday(now, value, loc), nil
+	// Try built-in keywords first
+	if t, ok := parseBuiltinKeywords(value, now, loc); ok {
+		return t, nil
 	}
 	
 	// Check for relative dates like "+1d", "-2w"
@@ -50,7 +42,26 @@ func ParseDateValue(value string, ctx *EvalContext) (time.Time, error) {
 		return t, nil
 	}
 	
-	return time.Time{}, fmt.Errorf("cannot parse date value: %s", value)
+	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidDateValue, value)
+}
+
+func parseBuiltinKeywords(value string, now time.Time, loc *time.Location) (time.Time, bool) {
+	value = strings.ToLower(value)
+	
+	switch value {
+	case "today":
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), true
+	case "now":
+		return now, true
+	case "yesterday":
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -1), true
+	case "tomorrow":
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, 1), true
+	case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
+		return nextWeekday(now, value, loc), true
+	default:
+		return time.Time{}, false
+	}
 }
 
 func nextWeekday(from time.Time, weekdayName string, loc *time.Location) time.Time {
@@ -88,22 +99,32 @@ func parseWeekday(name string) time.Weekday {
 	}
 }
 
-func applyRelativeDate(base time.Time, value string, loc *time.Location) (time.Time, error) {
-	// Parse relative date like "+1d", "-2w", "3M"
-	if len(value) < 2 {
-		return time.Time{}, fmt.Errorf("invalid relative date: %s", value)
+func applyRelativeDate(base time.Time, value string, _ *time.Location) (time.Time, error) {
+	if len(value) < MinIntervalLength {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidDateValue, value)
 	}
 	
-	// Extract sign
-	sign := 1
-	startIdx := 0
-	if value[0] == '+' {
-		startIdx = 1
-	} else if value[0] == '-' {
-		sign = -1
-		startIdx = 1
+	sign, startIdx := parseSign(value)
+	num, unit, err := parseRelativeComponents(value, startIdx)
+	if err != nil {
+		return time.Time{}, err
 	}
 	
+	return applyRelativeDelta(base, sign*num, unit)
+}
+
+func parseSign(value string) (int, int) {
+	switch value[0] {
+	case '+':
+		return 1, 1
+	case '-':
+		return -1, 1
+	default:
+		return 1, 0
+	}
+}
+
+func parseRelativeComponents(value string, startIdx int) (int, string, error) {
 	// Find where the number ends and unit begins
 	unitIdx := startIdx
 	for unitIdx < len(value) && (value[unitIdx] >= '0' && value[unitIdx] <= '9') {
@@ -111,19 +132,19 @@ func applyRelativeDate(base time.Time, value string, loc *time.Location) (time.T
 	}
 	
 	if unitIdx == startIdx || unitIdx >= len(value) {
-		return time.Time{}, fmt.Errorf("invalid relative date format: %s", value)
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidDateValue, value)
 	}
 	
 	// Parse number
 	num, err := strconv.Atoi(value[startIdx:unitIdx])
 	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid number in relative date: %s", value)
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidNumberFormat, value)
 	}
-	num *= sign
 	
-	// Get unit
-	unit := value[unitIdx:]
-	
+	return num, value[unitIdx:], nil
+}
+
+func applyRelativeDelta(base time.Time, num int, unit string) (time.Time, error) {
 	switch unit {
 	case "s":
 		return base.Add(time.Duration(num) * time.Second), nil
@@ -134,15 +155,15 @@ func applyRelativeDate(base time.Time, value string, loc *time.Location) (time.T
 	case "d":
 		return base.AddDate(0, 0, num), nil
 	case "w":
-		return base.AddDate(0, 0, num*7), nil
+		return base.AddDate(0, 0, num*DaysInWeek), nil
 	case "M":
 		return base.AddDate(0, num, 0), nil
 	case "Y":
 		return base.AddDate(num, 0, 0), nil
 	case "q":
-		return base.AddDate(0, num*3, 0), nil
+		return base.AddDate(0, num*MonthsInQuarter, 0), nil
 	default:
-		return time.Time{}, fmt.Errorf("unknown time unit: %s", unit)
+		return time.Time{}, fmt.Errorf("%w: %s", ErrUnknownUnit, unit)
 	}
 }
 
@@ -161,7 +182,7 @@ func parseISODate(value string, loc *time.Location) (time.Time, error) {
 		}
 	}
 	
-	return time.Time{}, fmt.Errorf("not an ISO date: %s", value)
+	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidISODateFormat, value)
 }
 
 func parseTimeOnly(value string, baseDate time.Time, loc *time.Location) (time.Time, error) {
@@ -179,76 +200,157 @@ func parseTimeOnly(value string, baseDate time.Time, loc *time.Location) (time.T
 		}
 	}
 	
-	return time.Time{}, fmt.Errorf("not a valid time: %s", value)
+	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidTime, value)
 }
 
-// ApplyOperation applies an operation to a date
+// ApplyOperation applies an operation to a date.
 func ApplyOperation(date time.Time, op, value string, loc *time.Location) (time.Time, error) {
 	if loc == nil {
-		loc = time.Local
+		loc = time.Local //nolint:gosmopolitan // intentional default to local timezone
 	}
 	
+	// Handle arithmetic operations
+	if result, ok := applyArithmeticOperation(date, op, value, loc); ok {
+		return result.t, result.err
+	}
+	
+	// Handle boundary operations
+	if result, ok := applyBoundaryOperation(date, op, loc); ok {
+		return result.t, result.err
+	}
+	
+	// Handle value-setting operations
+	if result, ok := applyValueOperation(date, op, value, loc); ok {
+		return result.t, result.err
+	}
+	
+	// Handle transformation operations
+	if result, ok := applyTransformOperation(date, op, value, loc); ok {
+		return result.t, result.err
+	}
+	
+	return time.Time{}, fmt.Errorf("%w: %s", ErrUnknownOperation, op)
+}
+
+type operationResult struct {
+	t   time.Time
+	err error
+}
+
+func applyArithmeticOperation(date time.Time, op, value string, loc *time.Location) (operationResult, bool) {
 	switch op {
 	case "+":
-		return applyRelativeDate(date, "+"+value, loc)
+		t, err := applyRelativeDate(date, "+"+value, loc)
+		return operationResult{t, err}, true
 	case "-":
-		return applyRelativeDate(date, "-"+value, loc)
-		
+		t, err := applyRelativeDate(date, "-"+value, loc)
+		return operationResult{t, err}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyBoundaryOperation(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	if result, ok := applyDayBoundaryOps(date, op, loc); ok {
+		return result, true
+	}
+	if result, ok := applyWeekBoundaryOps(date, op, loc); ok {
+		return result, true
+	}
+	if result, ok := applyMonthBoundaryOps(date, op, loc); ok {
+		return result, true
+	}
+	if result, ok := applyYearQuarterBoundaryOps(date, op, loc); ok {
+		return result, true
+	}
+	return operationResult{}, false
+}
+
+func applyDayBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	switch op {
 	case "start", "startofday":
-		return startOfDay(date, loc), nil
+		return operationResult{startOfDay(date, loc), nil}, true
 	case "end", "endofday":
-		return endOfDay(date, loc), nil
-		
+		return operationResult{endOfDay(date, loc), nil}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyWeekBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	switch op {
 	case "startofweek":
-		return startOfWeek(date, loc), nil
+		return operationResult{startOfWeek(date, loc), nil}, true
 	case "endofweek":
-		return endOfWeek(date, loc), nil
-		
+		return operationResult{endOfWeek(date, loc), nil}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyMonthBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	switch op {
 	case "startofmonth":
-		return startOfMonth(date, loc), nil
+		return operationResult{startOfMonth(date, loc), nil}, true
 	case "endofmonth":
-		return endOfMonth(date, loc), nil
-		
+		return operationResult{endOfMonth(date, loc), nil}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyYearQuarterBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
+	switch op {
 	case "startofyear":
-		return startOfYear(date, loc), nil
+		return operationResult{startOfYear(date, loc), nil}, true
 	case "endofyear":
-		return endOfYear(date, loc), nil
-		
+		return operationResult{endOfYear(date, loc), nil}, true
 	case "startofquarter":
-		return startOfQuarter(date, loc), nil
+		return operationResult{startOfQuarter(date, loc), nil}, true
 	case "endofquarter":
-		return endOfQuarter(date, loc), nil
-		
-	case "day":
-		// Set to specific day of month
+		return operationResult{endOfQuarter(date, loc), nil}, true
+	default:
+		return operationResult{}, false
+	}
+}
+
+func applyValueOperation(date time.Time, op, value string, loc *time.Location) (operationResult, bool) {
+	const (
+		dayOp  = "day"
+		timeOp = "time"
+	)
+	switch op {
+	case dayOp:
 		if value == "" {
-			return date, nil
+			return operationResult{date, nil}, true
 		}
 		day, err := strconv.Atoi(value)
 		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid day number: %s", value)
+			return operationResult{time.Time{}, fmt.Errorf("%w: %s", ErrInvalidDay, value)}, true
 		}
-		return time.Date(date.Year(), date.Month(), day, date.Hour(), date.Minute(), date.Second(), 0, loc), nil
-		
-	case "time":
-		// Set to specific time
+		t := time.Date(date.Year(), date.Month(), day, date.Hour(), date.Minute(), date.Second(), 0, loc)
+		return operationResult{t, nil}, true
+	case timeOp:
 		if value == "" {
-			return date, nil
+			return operationResult{date, nil}, true
 		}
 		t, err := parseTimeOnly(value, date, loc)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return t, nil
-		
-	case "round":
-		return roundDate(date, value, loc)
-		
-	case "trunc":
-		return truncateDate(date, value, loc)
-		
+		return operationResult{t, err}, true
 	default:
-		return time.Time{}, fmt.Errorf("unknown operation: %s", op)
+		return operationResult{}, false
+	}
+}
+
+func applyTransformOperation(date time.Time, op, value string, loc *time.Location) (operationResult, bool) {
+	switch op {
+	case "round":
+		t, err := roundDate(date, value, loc)
+		return operationResult{t, err}, true
+	case "trunc":
+		t, err := truncateDate(date, value, loc)
+		return operationResult{t, err}, true
+	default:
+		return operationResult{}, false
 	}
 }
 
@@ -257,14 +359,15 @@ func startOfDay(t time.Time, loc *time.Location) time.Time {
 }
 
 func endOfDay(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 999999999, loc)
+	const maxNanos = 999999999
+	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, maxNanos, loc)
 }
 
 func startOfWeek(t time.Time, loc *time.Location) time.Time {
 	// Adjust to Monday
 	weekday := int(t.Weekday())
 	if weekday == 0 {
-		weekday = 7
+		weekday = DaysInWeek
 	}
 	monday := t.AddDate(0, 0, -(weekday - 1))
 	return startOfDay(monday, loc)
@@ -274,9 +377,9 @@ func endOfWeek(t time.Time, loc *time.Location) time.Time {
 	// Adjust to Sunday
 	weekday := int(t.Weekday())
 	if weekday == 0 {
-		weekday = 7
+		weekday = DaysInWeek
 	}
-	sunday := t.AddDate(0, 0, 7-weekday)
+	sunday := t.AddDate(0, 0, DaysInWeek-weekday)
 	return endOfDay(sunday, loc)
 }
 
@@ -296,7 +399,9 @@ func startOfYear(t time.Time, loc *time.Location) time.Time {
 }
 
 func endOfYear(t time.Time, loc *time.Location) time.Time {
-	return time.Date(t.Year(), time.December, 31, 23, 59, 59, 999999999, loc)
+	const maxNanos = 999999999
+	const lastDay = 31
+	return time.Date(t.Year(), time.December, lastDay, 23, 59, 59, maxNanos, loc)
 }
 
 func startOfQuarter(t time.Time, loc *time.Location) time.Time {
@@ -304,11 +409,11 @@ func startOfQuarter(t time.Time, loc *time.Location) time.Time {
 	var quarterStartMonth time.Month
 	
 	switch {
-	case month <= 3:
+	case month <= FirstQuarterEnd:
 		quarterStartMonth = time.January
-	case month <= 6:
+	case month <= SecondQuarterEnd:
 		quarterStartMonth = time.April
-	case month <= 9:
+	case month <= ThirdQuarterEnd:
 		quarterStartMonth = time.July
 	default:
 		quarterStartMonth = time.October
@@ -322,11 +427,11 @@ func endOfQuarter(t time.Time, loc *time.Location) time.Time {
 	var quarterEndMonth time.Month
 	
 	switch {
-	case month <= 3:
+	case month <= FirstQuarterEnd:
 		quarterEndMonth = time.March
-	case month <= 6:
+	case month <= SecondQuarterEnd:
 		quarterEndMonth = time.June
-	case month <= 9:
+	case month <= ThirdQuarterEnd:
 		quarterEndMonth = time.September
 	default:
 		quarterEndMonth = time.December
@@ -343,7 +448,7 @@ func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) 
 	case "day", "":
 		// Round to nearest day
 		hour := t.Hour()
-		if hour >= 12 {
+		if hour >= NoonHour {
 			return startOfDay(t.AddDate(0, 0, 1), loc), nil
 		}
 		return startOfDay(t, loc), nil
@@ -351,7 +456,7 @@ func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) 
 	case "hour":
 		// Round to nearest hour
 		minute := t.Minute()
-		if minute >= 30 {
+		if minute >= HalfMinute {
 			return t.Add(time.Hour).Truncate(time.Hour), nil
 		}
 		return t.Truncate(time.Hour), nil
@@ -359,13 +464,13 @@ func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) 
 	case "minute":
 		// Round to nearest minute
 		second := t.Second()
-		if second >= 30 {
+		if second >= HalfSecond {
 			return t.Add(time.Minute).Truncate(time.Minute), nil
 		}
 		return t.Truncate(time.Minute), nil
 		
 	default:
-		return time.Time{}, fmt.Errorf("unsupported round unit: %s", unit)
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)
 	}
 }
 
@@ -378,6 +483,6 @@ func truncateDate(t time.Time, unit string, loc *time.Location) (time.Time, erro
 	case "minute":
 		return t.Truncate(time.Minute), nil
 	default:
-		return time.Time{}, fmt.Errorf("unsupported truncate unit: %s", unit)
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)
 	}
 }

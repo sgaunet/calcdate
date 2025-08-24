@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// RangeIterator represents an iterator over a date range
+// RangeIterator represents an iterator over a date range.
 type RangeIterator struct {
 	Start     time.Time
 	End       time.Time
@@ -15,7 +15,7 @@ type RangeIterator struct {
 	Index     int
 }
 
-// IterationResult represents a single iteration result
+// IterationResult represents a single iteration result.
 type IterationResult struct {
 	BeginTime time.Time
 	EndTime   time.Time
@@ -23,6 +23,7 @@ type IterationResult struct {
 }
 
 // NewRangeIterator creates a new range iterator
+//nolint:lll // long function signature is readable
 func NewRangeIterator(start, end time.Time, interval time.Duration, transform *TransformNode, tz *time.Location) *RangeIterator {
 	return &RangeIterator{
 		Start:     start,
@@ -34,68 +35,44 @@ func NewRangeIterator(start, end time.Time, interval time.Duration, transform *T
 	}
 }
 
-// Iterate generates all iterations for the range
+// Iterate generates all iterations for the range.
 func (r *RangeIterator) Iterate() ([]IterationResult, error) {
-	results := []IterationResult{}
-	
 	if r.Interval == 0 {
-		// No iteration, just return the range
-		beginTime := r.Start
-		endTime := r.End
-		
-		// Apply transform if provided
-		if r.Transform != nil {
-			ctx := &EvalContext{
-				Now:      time.Now(),
-				Timezone: r.Timezone,
-			}
-			var err error
-			beginTime, endTime, err = EvaluateTransform(r.Transform, beginTime, endTime, 0, ctx)
-			if err != nil {
-				return nil, err
-			}
-		}
-		
-		results = append(results, IterationResult{
-			BeginTime: beginTime,
-			EndTime:   endTime,
-			Index:     0,
-		})
-		return results, nil
+		return r.iterateWithoutInterval()
+	}
+	return r.iterateWithInterval()
+}
+
+func (r *RangeIterator) iterateWithoutInterval() ([]IterationResult, error) {
+	beginTime, endTime, err := r.applyTransform(r.Start, r.End, 0)
+	if err != nil {
+		return nil, err
 	}
 	
-	// Iterate with interval
+	results := []IterationResult{{
+		BeginTime: beginTime,
+		EndTime:   endTime,
+		Index:     0,
+	}}
+	return results, nil
+}
+
+func (r *RangeIterator) iterateWithInterval() ([]IterationResult, error) {
+	results := []IterationResult{}
 	currentBegin := r.Start
 	index := 0
 	
 	for currentBegin.Before(r.End) {
-		// Calculate end of this iteration
-		currentEnd := currentBegin.Add(r.Interval)
+		currentEnd := r.calculateIterationEnd(currentBegin)
 		
-		// Don't exceed the overall end time
-		if currentEnd.After(r.End) {
-			currentEnd = r.End
-		}
-		
-		// Skip if this would create a zero-duration or very short range (less than 1 second)
-		if currentBegin.Equal(currentEnd) || currentEnd.Sub(currentBegin) < time.Second {
+		// Skip if this would create a zero-duration or very short range
+		if r.isInvalidRange(currentBegin, currentEnd) {
 			break
 		}
 		
-		// Apply transform if provided
-		iterBegin := currentBegin
-		iterEnd := currentEnd
-		
-		if r.Transform != nil {
-			ctx := &EvalContext{
-				Now:      time.Now(),
-				Timezone: r.Timezone,
-			}
-			var err error
-			iterBegin, iterEnd, err = EvaluateTransform(r.Transform, iterBegin, iterEnd, index, ctx)
-			if err != nil {
-				return nil, err
-			}
+		iterBegin, iterEnd, err := r.applyTransform(currentBegin, currentEnd, index)
+		if err != nil {
+			return nil, err
 		}
 		
 		results = append(results, IterationResult{
@@ -104,35 +81,69 @@ func (r *RangeIterator) Iterate() ([]IterationResult, error) {
 			Index:     index,
 		})
 		
-		// Move to next iteration
 		currentBegin = currentEnd
 		index++
 		
-		// Prevent infinite loop
-		if index > 10000 {
-			return nil, fmt.Errorf("too many iterations (>10000)")
+		if index > MaxIterations {
+			return nil, ErrTooManyIterations
 		}
 	}
 	
 	return results, nil
 }
 
-// ParseInterval parses an interval string like "1d", "2h", "30m"
+func (r *RangeIterator) calculateIterationEnd(currentBegin time.Time) time.Time {
+	currentEnd := currentBegin.Add(r.Interval)
+	if currentEnd.After(r.End) {
+		currentEnd = r.End
+	}
+	return currentEnd
+}
+
+func (r *RangeIterator) isInvalidRange(begin, end time.Time) bool {
+	return begin.Equal(end) || end.Sub(begin) < time.Second
+}
+
+func (r *RangeIterator) applyTransform(begin, end time.Time, index int) (time.Time, time.Time, error) {
+	if r.Transform == nil {
+		return begin, end, nil
+	}
+	
+	ctx := &EvalContext{
+		Now:      time.Now(),
+		Timezone: r.Timezone,
+	}
+	return EvaluateTransform(r.Transform, begin, end, index, ctx)
+}
+
+// ParseInterval parses an interval string like "1d", "2h", "30m".
 func ParseInterval(interval string) (time.Duration, error) {
 	if interval == "" {
 		return 0, nil
 	}
 	
-	// Try to parse as Go duration first (handles h, m, s)
+	// Try to parse as Go duration first
 	if dur, err := time.ParseDuration(interval); err == nil {
 		return dur, nil
 	}
 	
-	// Handle custom units (d, w, M, Y)
-	if len(interval) < 2 {
-		return 0, fmt.Errorf("invalid interval: %s", interval)
+	return parseCustomInterval(interval)
+}
+
+func parseCustomInterval(interval string) (time.Duration, error) {
+	if len(interval) < MinIntervalLength {
+		return 0, fmt.Errorf("%w: %s", ErrInvalidInterval, interval)
 	}
 	
+	num, unit, err := parseIntervalComponents(interval)
+	if err != nil {
+		return 0, err
+	}
+	
+	return convertUnitToDuration(num, unit)
+}
+
+func parseIntervalComponents(interval string) (int, string, error) {
 	// Extract number and unit
 	unitIdx := 0
 	for unitIdx < len(interval) && (interval[unitIdx] >= '0' && interval[unitIdx] <= '9') {
@@ -140,16 +151,18 @@ func ParseInterval(interval string) (time.Duration, error) {
 	}
 	
 	if unitIdx == 0 || unitIdx >= len(interval) {
-		return 0, fmt.Errorf("invalid interval format: %s", interval)
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidInterval, interval)
 	}
 	
 	num, err := ParseInt(interval[:unitIdx])
 	if err != nil {
-		return 0, fmt.Errorf("invalid number in interval: %s", interval)
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidNumberFormat, interval)
 	}
 	
-	unit := interval[unitIdx:]
-	
+	return num, interval[unitIdx:], nil
+}
+
+func convertUnitToDuration(num int, unit string) (time.Duration, error) {
 	switch unit {
 	case "s":
 		return time.Duration(num) * time.Second, nil
@@ -158,59 +171,53 @@ func ParseInterval(interval string) (time.Duration, error) {
 	case "h":
 		return time.Duration(num) * time.Hour, nil
 	case "d":
-		return time.Duration(num) * 24 * time.Hour, nil
+		return time.Duration(num) * HoursInDay * time.Hour, nil
 	case "w":
-		return time.Duration(num) * 7 * 24 * time.Hour, nil
+		return time.Duration(num) * DaysInWeek * HoursInDay * time.Hour, nil
 	default:
-		// For M (month) and Y (year), we can't return a fixed duration
-		// These need special handling in the iterator
-		return 0, fmt.Errorf("interval unit '%s' requires special handling", unit)
+		return 0, fmt.Errorf("%w: unit '%s' requires special handling", ErrInvalidInterval, unit)
 	}
 }
 
-// ParseInt is a helper to parse integers
+// ParseInt is a helper to parse integers.
 func ParseInt(s string) (int, error) {
 	var result int
 	_, err := fmt.Sscanf(s, "%d", &result)
-	return result, err
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", ErrInvalidNumberFormat, s)
+	}
+	return result, nil
 }
 
 // IterateWithSpecialInterval handles month and year intervals
+//nolint:lll // long function signature is readable
 func IterateWithSpecialInterval(start, end time.Time, interval string, transform *TransformNode, tz *time.Location) ([]IterationResult, error) {
-	results := []IterationResult{}
-	
-	// Parse interval
-	if len(interval) < 2 {
-		return nil, fmt.Errorf("invalid interval: %s", interval)
-	}
-	
-	unitIdx := 0
-	for unitIdx < len(interval) && (interval[unitIdx] >= '0' && interval[unitIdx] <= '9') {
-		unitIdx++
-	}
-	
-	num, err := ParseInt(interval[:unitIdx])
+	num, unit, err := parseSpecialInterval(interval)
 	if err != nil {
 		return nil, err
 	}
 	
-	unit := interval[unitIdx:]
+	return performSpecialIteration(start, end, num, unit, transform, tz)
+}
+
+func parseSpecialInterval(interval string) (int, string, error) {
+	if len(interval) < MinIntervalLength {
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidInterval, interval)
+	}
 	
+	return parseIntervalComponents(interval)
+}
+
+//nolint:lll // long function signature is readable
+func performSpecialIteration(start, end time.Time, num int, unit string, transform *TransformNode, tz *time.Location) ([]IterationResult, error) {
+	results := []IterationResult{}
 	currentBegin := start
 	index := 0
 	
 	for currentBegin.Before(end) || currentBegin.Equal(end) {
-		var currentEnd time.Time
-		
-		switch unit {
-		case "M":
-			currentEnd = currentBegin.AddDate(0, num, 0)
-		case "Y":
-			currentEnd = currentBegin.AddDate(num, 0, 0)
-		case "q":
-			currentEnd = currentBegin.AddDate(0, num*3, 0)
-		default:
-			return nil, fmt.Errorf("unsupported interval unit: %s", unit)
+		currentEnd, err := calculateSpecialIntervalEnd(currentBegin, num, unit)
+		if err != nil {
+			return nil, err
 		}
 		
 		// Don't exceed the overall end time
@@ -218,24 +225,14 @@ func IterateWithSpecialInterval(start, end time.Time, interval string, transform
 			currentEnd = end
 		}
 		
-		// Skip if this would create a zero-duration or very short range (less than 1 second)
-		if currentBegin.Equal(currentEnd) || currentEnd.Sub(currentBegin) < time.Second {
+		// Skip invalid ranges
+		if isInvalidTimeRange(currentBegin, currentEnd) {
 			break
 		}
 		
-		// Apply transform if provided
-		iterBegin := currentBegin
-		iterEnd := currentEnd
-		
-		if transform != nil {
-			ctx := &EvalContext{
-				Now:      time.Now(),
-				Timezone: tz,
-			}
-			iterBegin, iterEnd, err = EvaluateTransform(transform, iterBegin, iterEnd, index, ctx)
-			if err != nil {
-				return nil, err
-			}
+		iterBegin, iterEnd, err := applySpecialTransform(currentBegin, currentEnd, index, transform, tz)
+		if err != nil {
+			return nil, err
 		}
 		
 		results = append(results, IterationResult{
@@ -244,15 +241,43 @@ func IterateWithSpecialInterval(start, end time.Time, interval string, transform
 			Index:     index,
 		})
 		
-		// Move to next iteration
 		currentBegin = currentEnd
 		index++
 		
-		// Prevent infinite loop
-		if index > 10000 {
-			return nil, fmt.Errorf("too many iterations (>10000)")
+		if index > MaxIterations {
+			return nil, ErrTooManyIterations
 		}
 	}
 	
 	return results, nil
+}
+
+func calculateSpecialIntervalEnd(begin time.Time, num int, unit string) (time.Time, error) {
+	switch unit {
+	case "M":
+		return begin.AddDate(0, num, 0), nil
+	case "Y":
+		return begin.AddDate(num, 0, 0), nil
+	case "q":
+		return begin.AddDate(0, num*MonthsInQuarter, 0), nil
+	default:
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)
+	}
+}
+
+func isInvalidTimeRange(begin, end time.Time) bool {
+	return begin.Equal(end) || end.Sub(begin) < time.Second
+}
+
+//nolint:lll // long function signature is readable
+func applySpecialTransform(begin, end time.Time, index int, transform *TransformNode, tz *time.Location) (time.Time, time.Time, error) {
+	if transform == nil {
+		return begin, end, nil
+	}
+	
+	ctx := &EvalContext{
+		Now:      time.Now(),
+		Timezone: tz,
+	}
+	return EvaluateTransform(transform, begin, end, index, ctx)
 }
