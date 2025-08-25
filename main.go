@@ -78,8 +78,8 @@ func main() {
 			}
 		} else {
 			// No input redirection and no expression provided
-			// Use default behavior: show today's date
-			config.expr = "today"
+			// Use default behavior: show current date and time
+			config.expr = "now"
 		}
 	}
 
