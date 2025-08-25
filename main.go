@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -16,8 +17,23 @@ import (
 
 var version = "development"
 
+// errNoExpressionProvided is returned when no expression is provided via stdin.
+var errNoExpressionProvided = errors.New("no expression provided via stdin")
+
 func printVersion() {
 	fmt.Println(version)
+}
+
+// isStdinRedirected checks if stdin is redirected (piped or from file).
+// Returns true if stdin is redirected, false if it's a terminal.
+func isStdinRedirected() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	// Check if stdin is a character device (terminal)
+	// If it's NOT a character device, it's redirected
+	return (stat.Mode() & os.ModeCharDevice) == 0
 }
 
 // readExprFromStdin reads the date expression from stdin.
@@ -33,7 +49,7 @@ func readExprFromStdin() (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", fmt.Errorf("error reading from stdin: %w", err)
 	}
-	return "", fmt.Errorf("no expression provided via stdin")
+	return "", errNoExpressionProvided
 }
 
 func main() {
@@ -51,14 +67,19 @@ func main() {
 
 	// Handle expression syntax (required via parameter or stdin)
 	if config.expr == "" {
-		// Try to read expression from stdin
-		var err error
-		config.expr, err = readExprFromStdin()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: No expression provided. Use -expr/-x parameter or provide via stdin\n")
-			fmt.Fprintf(os.Stderr, "Examples: calcdate -expr 'today' or echo 'today' | calcdate\n")
-			fmt.Fprintf(os.Stderr, "Use -h for more help\n")
-			os.Exit(1)
+		// Check if stdin is redirected (piped or from file)
+		if isStdinRedirected() {
+			// Input is piped or from file, read from stdin
+			var err error
+			config.expr, err = readExprFromStdin()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			// No input redirection and no expression provided
+			// Use default behavior: show today's date
+			config.expr = "today"
 		}
 	}
 

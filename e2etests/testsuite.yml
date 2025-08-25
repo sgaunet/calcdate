@@ -59,7 +59,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      echo "" | go run . 2>&1 | grep -q "No expression provided"
+      echo "" | go run . 2>&1 | grep -q "no expression provided via stdin"
     assertions:
     - result.code ShouldEqual 0
 

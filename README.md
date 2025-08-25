@@ -76,7 +76,7 @@ Usage of calcdate:
         Date expression (short form)
 ```
 
-**The -expr (or -x) parameter is required.**
+**The -expr (or -x) parameter is required, or provide the expression via stdin.**
 
 ## Examples
 
@@ -90,6 +90,16 @@ $ calcdate --expr "tomorrow"
 
 $ calcdate --expr "today +1w"
 2024/01/22 00:00:00
+
+# Using stdin (pipe expressions)
+$ echo "today" | calcdate
+2024-01-15 00:00:00
+
+$ echo "tomorrow" | calcdate --format iso
+2024-01-16T00:00:00Z
+
+$ echo "today +1w" | calcdate --format sql
+2024-01-22 00:00:00
 
 # Boundary operations
 $ calcdate --expr "today | endOfMonth"
@@ -119,6 +129,55 @@ $ calcdate --expr "now" --format=ts
 
 $ calcdate --expr "tomorrow" --format=iso
 2024-01-16T00:00:00Z
+
+# Stdin with ranges and iterations
+$ echo "today...+7d" | calcdate --each=1d --format=sql | head -3
+2024-01-15 00:00:00 - 2024-01-16 00:00:00
+2024-01-16 00:00:00 - 2024-01-17 00:00:00
+2024-01-17 00:00:00 - 2024-01-18 00:00:00
+
+# Advanced stdin usage examples
+
+## Timezone conversions
+# Convert current UTC time to CET timezone
+$ date -u "+%Y-%m-%dT%H:%M:%SZ" | calcdate --tz CET --format="%Y-%m-%d %H:%M:%S %Z"
+2024-01-15 15:30:45 CET
+
+# Parse date in EST and output in UTC
+$ echo "2024-01-15 10:30:00 EST" | calcdate --format iso
+2024-01-15T15:30:00Z
+
+## Scripting and automation
+# Get business hours for next week (Monday-Friday, 9am-5pm)
+$ echo "today | startOfWeek +1w...endOfWeek +1w" | calcdate --each=1d --skip-weekends --transform='$begin +9h, $end +17h'
+
+# Generate database-friendly timestamps for the last 30 days
+$ echo "today -30d...today" | calcdate --each=1d --format=ts
+
+# Calculate deployment windows (every Sunday at 2 AM for next 3 months)
+$ echo "today | startOfWeek +7d...+3M" | calcdate --each=1w --transform='$begin +2h' --format=iso
+
+## Pipeline chaining with other tools
+# Generate log rotation dates and create directories
+$ echo "today...+365d" | calcdate --each=1M --format=compact | xargs -I {} mkdir -p logs/{}
+
+# Create backup schedule for weekdays only
+$ echo "today...+30d" | calcdate --each=1d --skip-weekends --format='backup-%Y%m%d'
+
+# Generate monitoring time ranges
+$ echo "today -7d | startOfDay...today | endOfDay" | calcdate --each=1h --format='%Y-%m-%d %H:00:00'
+
+## Working with different date formats
+# Parse ISO date and add business days
+$ echo "2024-12-20T09:00:00Z +5bd" | calcdate --skip-weekends --format=human
+
+# Convert Unix timestamp to readable format in specific timezone
+$ echo "@1705331400 +1d" | calcdate --tz America/New_York --format="%A, %B %d, %Y at %I:%M %p"
+
+# Parse various input formats
+$ echo "Dec 25, 2024" | calcdate --format=iso
+$ echo "2024-12-25" | calcdate --format=human
+$ echo "next Monday" | calcdate --format=compact
 ```
 
 
