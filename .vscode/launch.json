@@ -5,23 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "-b and -e",
+            "name": "today",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
             "env": {},
-            "args": [ "-b" ,":-5:" ,"-e" ,":-1:" ]
-            // "args": [ "-b", "2022/01/07 20:50:00", "-e", "2022/01/08 00:30:00",   "-i", "5m", "-tmpl", "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }} --- {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }}" ]
+            "args": [ "-expr", "today" ]
         },
         {
-            "name": "tmpl",
+            "name": "range with iterations",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
             "env": {},
-            "args": [ "-b", "2022/01/07 20:50:00", "-e", "2022/01/08 00:30:00",   "-i", "5m", "-tmpl", "{{ .BeginTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} - {{ .EndTime.Format \"%YYYY/%MM/%DD %hh:%mm:%ss\" }} {{ .BeginTime.Unix }} {{ .EndTime.Unix }} --- {{ (MinusOneSecond .EndTime).Format \" %hh:%mm:%ss \" }}" ]
+            "args": [ "-expr", "today...+7d", "--each", "1d", "--format", "sql" ]
         }
     ]
 }
