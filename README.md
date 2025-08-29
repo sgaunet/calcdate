@@ -9,9 +9,20 @@
 [![GoDoc](https://godoc.org/github.com/sgaunet/calcdate?status.svg)](https://godoc.org/github.com/sgaunet/calcdate)
 [![License](https://img.shields.io/github/license/sgaunet/calcdate.svg)](LICENSE)
 
-# calcdate
+# calcdate v2.0
 
-calcdate is a utility to make some basic operation on date. It's useful when need to calculate a range of date in order to make database request.
+> ⚠️ **Breaking Changes in v2.0**: This version introduces a completely new expression syntax and removes legacy CLI flags. See [MIGRATION.md](MIGRATION.md) for upgrading from v1.x.
+
+calcdate is a modern command-line utility for date calculations and operations. It's particularly useful for generating date ranges for database queries, automating maintenance windows, and performing complex date arithmetic with an intuitive expression syntax.
+
+## 🆕 What's New in v2.0
+
+- **Modern expression syntax**: Natural language dates (`today`, `tomorrow`) with arithmetic (`+1d`, `-2w`)
+- **Pipeline operations**: Chain operations like `today | +1M | endOfMonth`
+- **Range iterations**: Generate date ranges with `today...+7d --each=1d`
+- **Transform expressions**: Apply business logic with `--transform '$begin +8h, $end +20h'`
+- **Stdin support**: Pipe expressions directly `echo "today" | calcdate`
+- **Skip weekends**: Built-in business day calculations
 
 ## Expression Syntax
 
@@ -183,14 +194,28 @@ $ echo "next Monday" | calcdate --format=compact
 
 # Install
 
-## Option 1
+## Option 1: Download Release
 
-* Download the release
-* Install the binary in /usr/local/bin 
+* Download the latest release from [GitHub Releases](https://github.com/sgaunet/calcdate/releases/latest)
+* Install the binary in `/usr/local/bin` or your preferred location
 
-## Option 2: With brew
+## Option 2: Homebrew
 
-```
+```bash
 brew tap sgaunet/homebrew-tools
 brew install sgaunet/tools/calcdate
 ```
+
+## Option 3: Go Install
+
+```bash
+go install github.com/sgaunet/calcdate/v2@latest
+```
+
+## Upgrading from v1.x
+
+If you're upgrading from v1.x, please read the [Migration Guide](MIGRATION.md) as v2.0 introduces breaking changes.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed release notes and version history.
