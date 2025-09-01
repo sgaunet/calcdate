@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sgaunet/calcdate/v2/calcdatelib"
+	"github.com/sgaunet/calcdate/v2"
 )
 
 
@@ -56,7 +56,7 @@ func main() {
 	config := parseCommandLineFlags()
 
 	if config.listTZ {
-		calcdatelib.ListTZ()
+		calcdate.ListTZ()
 		os.Exit(0)
 	}
 
@@ -135,7 +135,7 @@ func processExpressionMode(expr, each, transform, format, tzStr string, skipWeek
 	}
 
 	// Parse the expression
-	parser := calcdatelib.NewExprParser(expr)
+	parser := calcdate.NewExprParser(expr)
 	node, err := parser.Parse(expr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse expression: %v\n", err)
@@ -143,14 +143,14 @@ func processExpressionMode(expr, each, transform, format, tzStr string, skipWeek
 	}
 
 	// Check if it's a range expression (directly or within a pipe)
-	if rangeNode, ok := node.(*calcdatelib.RangeNode); ok {
+	if rangeNode, ok := node.(*calcdate.RangeNode); ok {
 		processRangeExpression(rangeNode, each, transform, format, tz, skipWeekends)
 		return
 	}
 
 	// Check if it's a pipe with a range as base
-	if pipeNode, ok := node.(*calcdatelib.PipeNode); ok {
-		if rangeNode, ok := pipeNode.Base.(*calcdatelib.RangeNode); ok {
+	if pipeNode, ok := node.(*calcdate.PipeNode); ok {
+		if rangeNode, ok := pipeNode.Base.(*calcdate.RangeNode); ok {
 			// This is a range with pipeline operations
 			processRangeWithPipeline(rangeNode, pipeNode.Operations, each, transform, format, tz, skipWeekends)
 			return
@@ -158,7 +158,7 @@ func processExpressionMode(expr, each, transform, format, tzStr string, skipWeek
 	}
 
 	// Single date expression
-	ctx := &calcdatelib.EvalContext{
+	ctx := &calcdate.EvalContext{
 		Now:      time.Now(),
 		Timezone: tz,
 	}
@@ -177,8 +177,8 @@ func processExpressionMode(expr, each, transform, format, tzStr string, skipWeek
 // processRangeWithPipeline handles range expressions with pipeline operations
 //
 //nolint:lll // long function signature is readable
-func processRangeWithPipeline(rangeNode *calcdatelib.RangeNode, operations []calcdatelib.ExprNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
-	ctx := &calcdatelib.EvalContext{
+func processRangeWithPipeline(rangeNode *calcdate.RangeNode, operations []calcdate.ExprNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
+	ctx := &calcdate.EvalContext{
 		Now:      time.Now(),
 		Timezone: tz,
 	}
@@ -198,8 +198,8 @@ func processRangeWithPipeline(rangeNode *calcdatelib.RangeNode, operations []cal
 
 	// Apply pipeline operations to the end date
 	for _, op := range operations {
-		if opNode, ok := op.(*calcdatelib.OperationNode); ok {
-			end, err = calcdatelib.ApplyOperation(end, opNode.Op, opNode.Value, tz)
+		if opNode, ok := op.(*calcdate.OperationNode); ok {
+			end, err = calcdate.ApplyOperation(end, opNode.Op, opNode.Value, tz)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to apply operation: %v\n", err)
 				os.Exit(1)
@@ -217,8 +217,8 @@ func processRangeWithPipeline(rangeNode *calcdatelib.RangeNode, operations []cal
 // processRangeExpression handles range expressions with optional iterations
 //
 //nolint:lll // long function signature is readable
-func processRangeExpression(rangeNode *calcdatelib.RangeNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
-	ctx := &calcdatelib.EvalContext{
+func processRangeExpression(rangeNode *calcdate.RangeNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
+	ctx := &calcdate.EvalContext{
 		Now:      time.Now(),
 		Timezone: tz,
 	}
@@ -257,12 +257,12 @@ func processRangeExpressionInternal(start, end time.Time, each, transform, forma
 	}
 }
 
-func parseTransformIfProvided(transform string) (*calcdatelib.TransformNode, error) {
+func parseTransformIfProvided(transform string) (*calcdate.TransformNode, error) {
 	if transform == "" {
 		return nil, nil //nolint:nilnil // returning nil transform and nil error is correct for empty input
 	}
 
-	parser := calcdatelib.NewExprParser("")
+	parser := calcdate.NewExprParser("")
 	node, err := parser.ParseTransform(transform)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse transform: %w", err)
@@ -271,7 +271,7 @@ func parseTransformIfProvided(transform string) (*calcdatelib.TransformNode, err
 }
 
 //nolint:lll // long function signature is readable
-func processIterations(start, end time.Time, each string, transformNode *calcdatelib.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+func processIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
 	if isSpecialInterval(each) {
 		processSpecialIntervalIterations(start, end, each, transformNode, format, tz, skipWeekends)
 	} else {
@@ -284,8 +284,8 @@ func isSpecialInterval(each string) bool {
 }
 
 //nolint:lll // long function signature is readable
-func processSpecialIntervalIterations(start, end time.Time, each string, transformNode *calcdatelib.TransformNode, format string, tz *time.Location, skipWeekends bool) {
-	results, err := calcdatelib.IterateWithSpecialInterval(start, end, each, transformNode, tz)
+func processSpecialIntervalIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+	results, err := calcdate.IterateWithSpecialInterval(start, end, each, transformNode, tz)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to iterate: %v\n", err)
 		os.Exit(1)
@@ -294,14 +294,14 @@ func processSpecialIntervalIterations(start, end time.Time, each string, transfo
 }
 
 //nolint:lll // long function signature is readable
-func processRegularIntervalIterations(start, end time.Time, each string, transformNode *calcdatelib.TransformNode, format string, tz *time.Location, skipWeekends bool) {
-	interval, err := calcdatelib.ParseInterval(each)
+func processRegularIntervalIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+	interval, err := calcdate.ParseInterval(each)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse interval: %v\n", err)
 		os.Exit(1)
 	}
 
-	iterator := calcdatelib.NewRangeIterator(start, end, interval, transformNode, tz)
+	iterator := calcdate.NewRangeIterator(start, end, interval, transformNode, tz)
 	results, err := iterator.Iterate()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to iterate: %v\n", err)
@@ -310,7 +310,7 @@ func processRegularIntervalIterations(start, end time.Time, each string, transfo
 	printFilteredResults(results, format, tz, skipWeekends)
 }
 
-func printFilteredResults(results []calcdatelib.IterationResult, format string, tz *time.Location, skipWeekends bool) {
+func printFilteredResults(results []calcdate.IterationResult, format string, tz *time.Location, skipWeekends bool) {
 	for _, result := range results {
 		if skipWeekends && isWeekend(result.BeginTime) {
 			continue
@@ -319,15 +319,14 @@ func printFilteredResults(results []calcdatelib.IterationResult, format string, 
 	}
 }
 
-//nolint:lll // long function signature is readable
-func processSingleRange(start, end time.Time, transformNode *calcdatelib.TransformNode, format string, tz *time.Location) {
+func processSingleRange(start, end time.Time, transformNode *calcdate.TransformNode, format string, tz *time.Location) {
 	if transformNode != nil {
-		ctx := &calcdatelib.EvalContext{
+		ctx := &calcdate.EvalContext{
 			Now:      time.Now(),
 			Timezone: tz,
 		}
 		var err error
-		start, end, err = calcdatelib.EvaluateTransform(transformNode, start, end, 0, ctx)
+		start, end, err = calcdate.EvaluateTransform(transformNode, start, end, 0, ctx)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to apply transform: %v\n", err)
 			os.Exit(1)
@@ -362,7 +361,7 @@ func formatOutput(t time.Time, format string, tz *time.Location) string {
 		// Check if this is a Unix date format (contains %)
 		if strings.Contains(format, "%") {
 			// Convert Unix format to Go format
-			goFormat := calcdatelib.ConvertUnixFormatToGolang(format)
+			goFormat := calcdate.ConvertUnixFormatToGolang(format)
 			return t.Format(goFormat)
 		}
 		// Otherwise treat as Go format (backward compatibility)
@@ -371,7 +370,7 @@ func formatOutput(t time.Time, format string, tz *time.Location) string {
 }
 
 // printIterationResult prints a single iteration result.
-func printIterationResult(result calcdatelib.IterationResult, format string, tz *time.Location) {
+func printIterationResult(result calcdate.IterationResult, format string, tz *time.Location) {
 	beginStr := formatOutput(result.BeginTime, format, tz)
 	endStr := formatOutput(result.EndTime, format, tz)
 	fmt.Printf("%s - %s\n", beginStr, endStr)

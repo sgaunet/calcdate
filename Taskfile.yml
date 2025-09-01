@@ -45,7 +45,7 @@ tasks:
       - GITLAB_TOKEN="" goreleaser --clean --skip validate
 
   godoc:
-    desc: "Run godoc server"
+    desc: "Go documentation of calcdate"
     cmds:
-      - godoc -http=:6060
+      - go doc -http -c github.com/sgaunet/calcdate/v2
     

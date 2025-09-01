@@ -1,5 +1,5 @@
-// Package calcdatelib provides date calculation and manipulation functionality.
-package calcdatelib
+// Package calcdate provides date calculation and manipulation functionality.
+package calcdate
 
 import (
 	"fmt"
