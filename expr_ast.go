@@ -1,4 +1,4 @@
-package calcdatelib
+package calcdate
 
 import (
 	"time"
