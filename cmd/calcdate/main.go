@@ -24,6 +24,47 @@ func printVersion() {
 	fmt.Println(version)
 }
 
+// printOperationsList prints a comprehensive list of all available operations.
+func printOperationsList() {
+	registry := calcdate.GetOperationRegistry()
+
+	fmt.Println("Available Operations:")
+	fmt.Println()
+
+	for _, category := range registry {
+		// Print category header
+		fmt.Printf("%s:\n", strings.ToUpper(category.Name))
+
+		// Print each operation in the category
+		for _, op := range category.Operations {
+			fmt.Printf("  %-20s %s\n", op.Name, op.Description)
+			fmt.Printf("  %-20s Example: %s\n", "", op.Example)
+
+			// Print aliases if any
+			if len(op.Aliases) > 0 {
+				fmt.Printf("  %-20s Aliases: %s\n", "", strings.Join(op.Aliases, ", "))
+			}
+			fmt.Println()
+		}
+	}
+
+	fmt.Println("For more information, see the README or visit:")
+	fmt.Println("https://github.com/sgaunet/calcdate")
+}
+
+// printCustomUsage prints enhanced usage information with quick examples.
+func printCustomUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: calcdate [options]\n\n")
+	fmt.Fprintf(os.Stderr, "Options:\n")
+	flag.PrintDefaults()
+	fmt.Fprintf(os.Stderr, "\nQuick Examples:\n")
+	fmt.Fprintf(os.Stderr, "  calcdate -x \"today +1d\"                    # Tomorrow\n")
+	fmt.Fprintf(os.Stderr, "  calcdate -x \"now | +2h | round hour\"       # 2 hours from now, rounded\n")
+	fmt.Fprintf(os.Stderr, "  calcdate -x \"today | startofmonth\"         # First day of month\n")
+	fmt.Fprintf(os.Stderr, "  calcdate -x \"today...+7d\" -each 1d         # Next 7 days\n")
+	fmt.Fprintf(os.Stderr, "\nUse --list-ops to see all available operations\n")
+}
+
 // isStdinRedirected checks if stdin is redirected (piped or from file).
 // Returns true if stdin is redirected, false if it's a terminal.
 func isStdinRedirected() bool {
@@ -60,6 +101,11 @@ func main() {
 		os.Exit(0)
 	}
 
+	if config.listOps {
+		printOperationsList()
+		os.Exit(0)
+	}
+
 	if config.vOption {
 		printVersion()
 		os.Exit(0)
@@ -89,15 +135,19 @@ func main() {
 type cliConfig struct {
 	tz                                            string
 	expr, each, transform, format                 string
-	vOption, listTZ, skipWeekends                 bool
+	vOption, listTZ, listOps, skipWeekends        bool
 }
 
 func parseCommandLineFlags() cliConfig {
 	var config cliConfig
 
+	// Set custom usage function
+	flag.Usage = printCustomUsage
+
 	// Legacy flags (kept)
 	flag.StringVar(&config.tz, "tz", "Local", "Input timezone")
 	flag.BoolVar(&config.listTZ, "list-tz", false, "List timezones")
+	flag.BoolVar(&config.listOps, "list-ops", false, "List all available operations")
 	flag.BoolVar(&config.vOption, "v", false, "Get version")
 
 	// New expression flags

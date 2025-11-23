@@ -9,13 +9,31 @@ testcases:
     assertions:
     - result.code ShouldEqual 0
 
+# Tests for utility flags
+- name: list operations flag
+  steps:
+  - type: exec
+    script: |
+      cd {{.venom.testsuite.workdir}}/..
+      go run ./cmd/calcdate --list-ops
+    assertions:
+    - result.code ShouldEqual 0
+    - result.systemout ShouldContainSubstring "Available Operations:"
+    - result.systemout ShouldContainSubstring "DATE VALUES:"
+    - result.systemout ShouldContainSubstring "today"
+    - result.systemout ShouldContainSubstring "ARITHMETIC OPERATIONS:"
+    - result.systemout ShouldContainSubstring "BOUNDARIES"
+    - result.systemout ShouldContainSubstring "startofmonth"
+    - result.systemout ShouldContainSubstring "endofmonth"
+    - result.systemout ShouldContainSubstring "Example:"
+
 # Tests for stdin functionality
 - name: stdin - basic expression
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(echo "today" | go run . --format sql)
+      result=$(echo "today" | go run ./cmd/calcdate --format sql)
       expected=$(date "+%Y-%m-%d 00:00:00")
       [ "$result" = "$expected" ]
     assertions:
@@ -26,8 +44,8 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      echo "today +1d" | go run . --format sql > /tmp/1
-      go run . -x "today +1d" --format sql > /tmp/2
+      echo "today +1d" | go run ./cmd/calcdate --format sql > /tmp/1
+      go run ./cmd/calcdate -x "today +1d" --format sql > /tmp/2
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0
@@ -37,7 +55,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(echo "now" | go run . --format iso)
+      result=$(echo "now" | go run ./cmd/calcdate --format iso)
       # Check it matches ISO format pattern
       echo "$result" | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*$"
     assertions:
@@ -48,8 +66,8 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      echo "today...+2d" | go run . --each 1d --format sql | head -n 2 > /tmp/1
-      go run . -x "today...+2d" --each 1d --format sql | head -n 2 > /tmp/2
+      echo "today...+2d" | go run ./cmd/calcdate --each 1d --format sql | head -n 2 > /tmp/1
+      go run ./cmd/calcdate -x "today...+2d" --each 1d --format sql | head -n 2 > /tmp/2
       diff -q /tmp/1 /tmp/2
     assertions:
     - result.code ShouldEqual 0
@@ -59,7 +77,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      echo "" | go run . 2>&1 | grep -q "no expression provided via stdin"
+      echo "" | go run ./cmd/calcdate 2>&1 | grep -q "no expression provided via stdin"
     assertions:
     - result.code ShouldEqual 0
 
@@ -69,7 +87,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x 'today' --format sql)
+      result=$(go run ./cmd/calcdate -x 'today' --format sql)
       expected=$(date "+%Y-%m-%d 00:00:00")
       [ "$result" = "$expected" ]
     assertions:
@@ -80,7 +98,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x 'now' --format sql)
+      result=$(go run ./cmd/calcdate -x 'now' --format sql)
       # Check it matches today's date pattern
       echo "$result" | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
     assertions:
@@ -91,7 +109,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x 'yesterday' --format sql > /tmp/1
+      go run ./cmd/calcdate -x 'yesterday' --format sql > /tmp/1
       if [[ "$OSTYPE" == "darwin"* ]]; then
         date -v-1d "+%Y-%m-%d 00:00:00" > /tmp/2
       else
@@ -106,7 +124,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x 'tomorrow' --format sql > /tmp/1
+      go run ./cmd/calcdate -x 'tomorrow' --format sql > /tmp/1
       if [[ "$OSTYPE" == "darwin"* ]]; then
         date -v+1d "+%Y-%m-%d 00:00:00" > /tmp/2
       else
@@ -121,20 +139,20 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15' --format sql
+      go run ./cmd/calcdate -x '2024-03-15' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-15 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-15 00:00:00"
 
 - name: expr - iso datetime
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15T14:30:45' --format sql
+      go run ./cmd/calcdate -x '2024-03-15T14:30:45' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-15 14:30:45"
+    - result.systemout ShouldContainSubstring "2024-03-15 14:30:45"
 
 # Tests for arithmetic operations
 - name: expr - add days
@@ -142,60 +160,60 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-15 +7d' --format sql
+      go run ./cmd/calcdate -x '2024-01-15 +7d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-22 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-22 00:00:00"
 
 - name: expr - subtract days
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-15 -3d' --format sql
+      go run ./cmd/calcdate -x '2024-01-15 -3d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-12 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-12 00:00:00"
 
 - name: expr - add weeks
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 +2w' --format sql
+      go run ./cmd/calcdate -x '2024-01-01 +2w' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-15 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-15 00:00:00"
 
 - name: expr - add months
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-31 +1M' --format sql
+      go run ./cmd/calcdate -x '2024-01-31 +1M' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-02 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-02 00:00:00"
 
 - name: expr - add years
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-02-29 +1Y' --format sql
+      go run ./cmd/calcdate -x '2024-02-29 +1Y' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-03-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2025-03-01 00:00:00"
 
 - name: expr - multiple operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 +1M +2d +3h' --format sql
+      go run ./cmd/calcdate -x '2024-01-01 +1M +2d +3h' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-03 03:00:00"
+    - result.systemout ShouldContainSubstring "2024-02-03 03:00:00"
 
 # Tests for pipeline operations
 - name: expr - pipe operations
@@ -203,190 +221,190 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-15 | +1M | +2d' --format sql
+      go run ./cmd/calcdate -x '2024-01-15 | +1M | +2d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-17 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-02-17 00:00:00"
 
 - name: expr - startOfMonth
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15 | startOfMonth' --format sql
+      go run ./cmd/calcdate -x '2024-03-15 | startOfMonth' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-01 00:00:00"
 
 - name: expr - endOfMonth
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-02-15 | endOfMonth' --format sql
+      go run ./cmd/calcdate -x '2024-02-15 | endOfMonth' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-29 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-02-29 23:59:59"
 
 - name: expr - startOfWeek
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15 | startOfWeek' --format sql
+      go run ./cmd/calcdate -x '2024-03-15 | startOfWeek' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-11 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-11 00:00:00"
 
 - name: expr - endOfWeek
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15 | endOfWeek' --format sql
+      go run ./cmd/calcdate -x '2024-03-15 | endOfWeek' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-17 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-03-17 23:59:59"
 
 - name: expr - startOfYear
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-07-15 | startOfYear' --format sql
+      go run ./cmd/calcdate -x '2024-07-15 | startOfYear' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00"
 
 - name: expr - endOfYear
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-07-15 | endOfYear' --format sql
+      go run ./cmd/calcdate -x '2024-07-15 | endOfYear' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-31 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-12-31 23:59:59"
 
 - name: expr - startOfHour
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | startOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | startOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:00:00"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:00:00"
 
 - name: expr - endOfHour
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | endOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | endOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:59:59"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:59:59"
 
 - name: expr - startOfMinute
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | startOfMinute' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | startOfMinute' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:34:00"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:34:00"
 
 - name: expr - endOfMinute
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | endOfMinute' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | endOfMinute' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:34:59"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:34:59"
 
 - name: expr - startOfSecond
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | startOfSecond' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | startOfSecond' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:34:45"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:34:45"
 
 - name: expr - endOfSecond
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | endOfSecond' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | endOfSecond' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:34:45"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:34:45"
 
 - name: expr - chained time boundary operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 | startOfHour | endOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 | startOfHour | endOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 12:59:59"
+    - result.systemout ShouldContainSubstring "2024-08-30 12:59:59"
 
 - name: expr - time boundaries with arithmetic
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 12:34:45 +1d | endOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 12:34:45 +1d | endOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-31 12:59:59"
+    - result.systemout ShouldContainSubstring "2024-08-31 12:59:59"
 
 - name: expr - time boundary edge cases
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-31 23:59:59 | startOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-12-31 23:59:59 | startOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-31 23:00:00"
+    - result.systemout ShouldContainSubstring "2024-12-31 23:00:00"
 
 - name: expr - midnight time boundaries
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-08-30 00:00:00 | endOfHour' --format sql
+      go run ./cmd/calcdate -x '2024-08-30 00:00:00 | endOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-08-30 00:59:59"
+    - result.systemout ShouldContainSubstring "2024-08-30 00:59:59"
 
 - name: expr - mixed pipeline operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-03-15 | startOfMonth | +1M | endOfMonth' --format sql
+      go run ./cmd/calcdate -x '2024-03-15 | startOfMonth | +1M | endOfMonth' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-04-30 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-04-30 23:59:59"
 
 - name: expr - operations without pipes
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-15 | endOfMonth +1d +1s' --format sql
+      go run ./cmd/calcdate -x '2024-01-15 | endOfMonth +1d +1s' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-02 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-02-02 00:00:00"
 
 # Tests for range expressions
 - name: expr - simple range
@@ -394,47 +412,47 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-01-05' --format sql
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-05' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-01-05 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00 - 2024-01-05 00:00:00"
 
 - name: expr - range with operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-01-01 | +7d' --format sql
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-01 | +7d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-01-08 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00 - 2024-01-08 00:00:00"
 
 - name: expr - range with endOfMonth
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-02-01 ... 2024-02-01 | endOfMonth' --format sql
+      go run ./cmd/calcdate -x '2024-02-01 ... 2024-02-01 | endOfMonth' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-01 00:00:00 - 2024-02-29 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-02-01 00:00:00 - 2024-02-29 23:59:59"
 
 - name: expr - range with multiple operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-01-01 | endOfMonth +1d +1s' --format sql
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-01 | endOfMonth +1d +1s' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-02-02 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00 - 2024-02-02 00:00:00"
 
 - name: expr - relative range
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x 'today ... today | +7d' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+      go run ./cmd/calcdate -x 'today ... today | +7d' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
     assertions:
     - result.code ShouldEqual 0
 
@@ -444,7 +462,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01 ... 2024-01-04' --each 1d --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-04' --each 1d --format sql | wc -l | tr -d ' ')
       [ "$result" = "3" ]
     assertions:
     - result.code ShouldEqual 0
@@ -454,7 +472,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01 ... 2024-01-15' --each 1w --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-15' --each 1w --format sql | wc -l | tr -d ' ')
       [ "$result" = "2" ]
     assertions:
     - result.code ShouldEqual 0
@@ -464,7 +482,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01 ... 2024-04-01' --each 1M --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01 ... 2024-04-01' --each 1M --format sql | wc -l | tr -d ' ')
       [ "$result" = "3" ]
     assertions:
     - result.code ShouldEqual 0
@@ -474,17 +492,17 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-07-01' --each 1q --format sql | head -1
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-07-01' --each 1q --format sql | head -1
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00 - 2024-04-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00 - 2024-04-01 00:00:00"
 
 - name: expr - each hour iteration
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01T00:00:00 ... 2024-01-01T03:00:00' --each 1h --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01T00:00:00 ... 2024-01-01T03:00:00' --each 1h --format sql | wc -l | tr -d ' ')
       [ "$result" = "3" ]
     assertions:
     - result.code ShouldEqual 0
@@ -494,7 +512,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01 ... 2024-01-01 | +3d' --each 1d --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-01 | +3d' --each 1d --format sql | wc -l | tr -d ' ')
       [ "$result" = "3" ]
     assertions:
     - result.code ShouldEqual 0
@@ -505,20 +523,20 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-01-02' --each 1d --transform '$begin +8h, $end +20h' --format sql | head -1
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-02' --each 1d --transform '$begin +8h, $end +20h' --format sql | head -1
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 08:00:00 - 2024-01-02 20:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 08:00:00 - 2024-01-02 20:00:00"
 
 - name: expr - transform with operations
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 ... 2024-01-03' --each 1d --transform '$begin | startOfDay +9h, $end | startOfDay +17h' --format sql | head -1
+      go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-03' --each 1d --transform '$begin | startOfDay +9h, $end | startOfDay +17h' --format sql | head -1
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 09:00:00 - 2024-01-02 17:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 09:00:00 - 2024-01-02 17:00:00"
 
 # Tests for skip weekends
 - name: expr - skip weekends
@@ -527,7 +545,7 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Jan 6-7, 2024 is Saturday-Sunday
-      result=$(go run . -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql | wc -l | tr -d ' ')
       [ "$result" = "2" ]  # Only Friday and Monday
     assertions:
     - result.code ShouldEqual 0
@@ -537,7 +555,7 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      output=$(go run . -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql)
+      output=$(go run ./cmd/calcdate -x '2024-01-05 ... 2024-01-09' --each 1d --skip-weekends --format sql)
       echo "$output" | grep -q "2024-01-05"  # Should contain Friday
       echo "$output" | grep -q "2024-01-08"  # Should contain Monday
       ! echo "$output" | grep -q "2024-01-06"  # Should NOT contain Saturday
@@ -551,40 +569,40 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01T10:00:00 +2h +30m +45s' --format sql
+      go run ./cmd/calcdate -x '2024-01-01T10:00:00 +2h +30m +45s' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 12:30:45"
+    - result.systemout ShouldContainSubstring "2024-01-01 12:30:45"
 
 - name: expr - round hour
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01T10:35:00 | round hour' --format sql
+      go run ./cmd/calcdate -x '2024-01-01T10:35:00 | round hour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 11:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 11:00:00"
 
 - name: expr - trunc hour
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01T10:35:00 | trunc hour' --format sql
+      go run ./cmd/calcdate -x '2024-01-01T10:35:00 | trunc hour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 10:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 10:00:00"
 
 - name: expr - set time
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-15 | time 14:30:00' --format sql
+      go run ./cmd/calcdate -x '2024-01-15 | time 14:30:00' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-15 14:30:00"
+    - result.systemout ShouldContainSubstring "2024-01-15 14:30:00"
 
 # Tests for timezone support
 - name: expr - timezone UTC
@@ -592,70 +610,70 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01T12:00:00' -tz UTC --format iso
+      go run ./cmd/calcdate -x '2024-01-01T12:00:00' -tz UTC --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01T12:00:00Z"
+    - result.systemout ShouldContainSubstring "2024-01-01T12:00:00Z"
 
 - name: expr - timezone conversion
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01T00:00:00' -tz 'America/New_York' --format iso
+      go run ./cmd/calcdate -x '2024-01-01T00:00:00' -tz 'America/New_York' --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01T00:00:00-05:00"
+    - result.systemout ShouldContainSubstring "2024-01-01T00:00:00-05:00"
 
 - name: expr - inline timezone UTC
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 UTC +1d | endOfMinute' --format sql
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 UTC +1d | endOfMinute' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-31 14:34:59"
+    - result.systemout ShouldContainSubstring "2025-08-31 14:34:59"
 
 - name: expr - inline timezone GMT
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 GMT | startOfHour' --format sql
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 GMT | startOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-30 14:00:00"
+    - result.systemout ShouldContainSubstring "2025-08-30 14:00:00"
 
 - name: expr - inline timezone EST
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 EST | endOfHour' --format sql
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 EST | endOfHour' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-30 19:59:59"
+    - result.systemout ShouldContainSubstring "2025-08-30 19:59:59"
 
 - name: expr - inline timezone CET
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 CET +2h' --format sql
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 CET +2h' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-30 14:34:45"
+    - result.systemout ShouldContainSubstring "2025-08-30 14:34:45"
 
 - name: expr - timezone with time boundaries
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 UTC | endOfHour +1d' --format sql
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 UTC | endOfHour +1d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-31 14:59:59"
+    - result.systemout ShouldContainSubstring "2025-08-31 14:59:59"
 
 # Tests for timezone precedence and behavior
 - name: expr - inline timezone parsing vs output flag
@@ -663,10 +681,10 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2025-08-30 12:34:45 EST' -tz UTC --format iso
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 EST' -tz UTC --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-30T17:34:45Z"
+    - result.systemout ShouldContainSubstring "2025-08-30T17:34:45Z"
 
 - name: expr - timezone precedence documentation
   steps:
@@ -674,7 +692,7 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Parse as UTC (inline), output in America/New_York (-tz flag)
-      result1=$(go run . -x '2025-08-30 12:00:00 UTC' -tz 'America/New_York' --format iso)
+      result1=$(go run ./cmd/calcdate -x '2025-08-30 12:00:00 UTC' -tz 'America/New_York' --format iso)
       echo "Input UTC, Output NYC: $result1"
       # Should show UTC time converted to NYC time (UTC-4 in summer)
       [[ "$result1" == *"08:00:00"* ]]
@@ -688,7 +706,7 @@ testcases:
       cd {{.venom.testsuite.workdir}}/..
       # Test that inline timezone + -tz flag work together logically
       # Parse 12:00 EST (17:00 UTC), output in UTC
-      go run . -x '2025-08-30 12:00:00 EST +3h' -tz UTC --format iso | grep "2025-08-30T20:00:00Z"
+      go run ./cmd/calcdate -x '2025-08-30 12:00:00 EST +3h' -tz UTC --format iso | grep "2025-08-30T20:00:00Z"
     assertions:
     - result.code ShouldEqual 0
 
@@ -699,10 +717,10 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Test the exact bug case: CET (UTC+2 in summer) with endOfMinute
-      go run . -x '2025-08-30 12:34:45 CET +1d | endOfMinute' -tz 'UTC' --format iso
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 CET +1d | endOfMinute' -tz 'UTC' --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-31T10:34:59Z"
+    - result.systemout ShouldContainSubstring "2025-08-31T10:34:59Z"
 
 - name: expr - timezone pipeline bug regression EST
   steps:
@@ -710,10 +728,10 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Test EST (UTC-5) with time boundary operations
-      go run . -x '2025-08-30 12:34:45 EST | endOfHour +1d' -tz 'UTC' --format iso
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 EST | endOfHour +1d' -tz 'UTC' --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-31T17:59:59Z"
+    - result.systemout ShouldContainSubstring "2025-08-31T17:59:59Z"
 
 - name: expr - timezone boundary operations chaining
   steps:
@@ -721,10 +739,10 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Test multiple chained boundary operations with timezone conversion
-      go run . -x '2025-08-30 12:34:45 EST | startOfHour | endOfHour' -tz 'UTC' --format iso
+      go run ./cmd/calcdate -x '2025-08-30 12:34:45 EST | startOfHour | endOfHour' -tz 'UTC' --format iso
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2025-08-30T17:59:59Z"
+    - result.systemout ShouldContainSubstring "2025-08-30T17:59:59Z"
 
 - name: expr - timezone all boundary operations
   steps:
@@ -732,9 +750,9 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Test that all time boundary operations preserve timezone context
-      result1=$(go run . -x '2025-08-30 12:34:45 UTC | startOfMinute' -tz 'EST' --format iso)
-      result2=$(go run . -x '2025-08-30 12:34:45 UTC | startOfSecond' -tz 'EST' --format iso)  
-      result3=$(go run . -x '2025-08-30 12:34:45 UTC | startOfDay' -tz 'EST' --format iso)
+      result1=$(go run ./cmd/calcdate -x '2025-08-30 12:34:45 UTC | startOfMinute' -tz 'EST' --format iso)
+      result2=$(go run ./cmd/calcdate -x '2025-08-30 12:34:45 UTC | startOfSecond' -tz 'EST' --format iso)  
+      result3=$(go run ./cmd/calcdate -x '2025-08-30 12:34:45 UTC | startOfDay' -tz 'EST' --format iso)
       # All should show correct UTC->EST conversions (UTC-5)
       [[ "$result1" == *"07:34:00"* ]] && [[ "$result2" == *"07:34:45"* ]] && [[ "$result3" == *"19:00:00"* ]]
     assertions:
@@ -747,50 +765,50 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '%Y-%m-%d'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '%Y-%m-%d'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25"
+    - result.systemout ShouldContainSubstring "2024-12-25"
 
 - name: format - Unix basic date and time
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '%Y-%m-%d %H:%M:%S'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '%Y-%m-%d %H:%M:%S'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 14:30:45"
+    - result.systemout ShouldContainSubstring "2024-12-25 14:30:45"
 
 - name: format - Unix 2-digit year
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format '%y/%m/%d'
+      go run ./cmd/calcdate -x '2024-12-25' --format '%y/%m/%d'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "24/12/25"
+    - result.systemout ShouldContainSubstring "24/12/25"
 
 - name: format - Unix 12-hour format with AM/PM
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '%Y-%m-%d %I:%M:%S %p'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '%Y-%m-%d %I:%M:%S %p'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 02:30:45 PM"
+    - result.systemout ShouldContainSubstring "2024-12-25 02:30:45 PM"
 
 - name: format - Unix 12-hour format AM
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 09:15:30' --format '%I:%M %p'
+      go run ./cmd/calcdate -x '2024-12-25 09:15:30' --format '%I:%M %p'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "09:15 AM"
+    - result.systemout ShouldContainSubstring "09:15 AM"
 
 # Unix weekday and month name formats
 - name: format - Unix short weekday and month
@@ -798,20 +816,20 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format '%a, %b %d'
+      go run ./cmd/calcdate -x '2024-12-25' --format '%a, %b %d'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Wed, Dec 25"
+    - result.systemout ShouldContainSubstring "Wed, Dec 25"
 
 - name: format - Unix full weekday and month
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format '%A, %B %d, %Y'
+      go run ./cmd/calcdate -x '2024-12-25' --format '%A, %B %d, %Y'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Wednesday, December 25, 2024"
+    - result.systemout ShouldContainSubstring "Wednesday, December 25, 2024"
 
 # Unix timezone formats  
 - name: format - Unix timezone name
@@ -819,30 +837,30 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 12:00:00' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
+      go run ./cmd/calcdate -x '2024-12-25 12:00:00' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 12:00:00 UTC"
+    - result.systemout ShouldContainSubstring "2024-12-25 12:00:00 UTC"
 
 - name: format - Unix timezone offset
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 12:00:00' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %z'
+      go run ./cmd/calcdate -x '2024-12-25 12:00:00' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 12:00:00 +0000"
+    - result.systemout ShouldContainSubstring "2024-12-25 12:00:00 +0000"
 
 - name: format - Unix timezone EST conversion
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 17:00:00 UTC' -tz 'EST' --format '%Y-%m-%d %H:%M:%S %Z'
+      go run ./cmd/calcdate -x '2024-12-25 17:00:00 UTC' -tz 'EST' --format '%Y-%m-%d %H:%M:%S %Z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 12:00:00 EST"
+    - result.systemout ShouldContainSubstring "2024-12-25 12:00:00 EST"
 
 # Unix additional formats
 - name: format - Unix day of year
@@ -850,10 +868,10 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format 'Day %j of %Y'
+      go run ./cmd/calcdate -x '2024-12-25' --format 'Day %j of %Y'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Day 360 of 2024"
+    - result.systemout ShouldContainSubstring "Day 360 of 2024"
 
 - name: format - Unix weekday numbers
   steps:
@@ -861,20 +879,20 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Note: %w and %u don't have direct Go equivalents, so we test basic functionality  
-      go run . -x '2024-12-25' --format 'Day %j of year %Y'
+      go run ./cmd/calcdate -x '2024-12-25' --format 'Day %j of year %Y'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Day 360 of year 2024"
+    - result.systemout ShouldContainSubstring "Day 360 of year 2024"
 
 - name: format - Unix literal percent
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format 'Test %% literal on %Y-%m-%d'  
+      go run ./cmd/calcdate -x '2024-12-25' --format 'Test %% literal on %Y-%m-%d'  
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Test % literal on 2024-12-25"
+    - result.systemout ShouldContainSubstring "Test % literal on 2024-12-25"
 
 # Complex Unix format combinations
 - name: format - Unix complex mixed format
@@ -882,10 +900,10 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' -tz 'UTC' --format '%A, %B %d, %Y at %I:%M %p %Z'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' -tz 'UTC' --format '%A, %B %d, %Y at %I:%M %p %Z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Wednesday, December 25, 2024 at 02:30 PM UTC"
+    - result.systemout ShouldContainSubstring "Wednesday, December 25, 2024 at 02:30 PM UTC"
 
 # Backward compatibility with Go formats
 - name: format - Go format basic date
@@ -893,50 +911,50 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '2006-01-02'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '2006-01-02'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25"
+    - result.systemout ShouldContainSubstring "2024-12-25"
 
 - name: format - Go format with time
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '2006/01/02 15:04:05'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '2006/01/02 15:04:05'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024/12/25 14:30:45"
+    - result.systemout ShouldContainSubstring "2024/12/25 14:30:45"
 
 - name: format - Go format custom layout
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format 'Monday, January 2, 2006'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format 'Monday, January 2, 2006'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Wednesday, December 25, 2024"
+    - result.systemout ShouldContainSubstring "Wednesday, December 25, 2024"
 
 - name: format - Go format time only
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format '15:04:05'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format '15:04:05'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "14:30:45"
+    - result.systemout ShouldContainSubstring "14:30:45"
 
 - name: format - Go format with timezone
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' -tz 'UTC' --format '2006-01-02T15:04:05Z07:00'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' -tz 'UTC' --format '2006-01-02T15:04:05Z07:00'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25T14:30:45Z"
+    - result.systemout ShouldContainSubstring "2024-12-25T14:30:45Z"
 
 # Format with timezone inline vs flag
 - name: format - Unix format inline timezone vs flag
@@ -944,20 +962,20 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 12:00:00 EST' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
+      go run ./cmd/calcdate -x '2024-12-25 12:00:00 EST' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 17:00:00 UTC"
+    - result.systemout ShouldContainSubstring "2024-12-25 17:00:00 UTC"
 
 - name: format - Unix format preserve inline timezone
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 12:00:00 EST | startOfHour' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
+      go run ./cmd/calcdate -x '2024-12-25 12:00:00 EST | startOfHour' -tz 'UTC' --format '%Y-%m-%d %H:%M:%S %Z'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 17:00:00 UTC"
+    - result.systemout ShouldContainSubstring "2024-12-25 17:00:00 UTC"
 
 # Format short flags
 - name: format - Unix format with short flag
@@ -965,10 +983,10 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' -f '%b %d, %Y'
+      go run ./cmd/calcdate -x '2024-12-25' -f '%b %d, %Y'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Dec 25, 2024"
+    - result.systemout ShouldContainSubstring "Dec 25, 2024"
 
 # Format edge cases
 - name: format - empty format uses default SQL
@@ -976,60 +994,60 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format ''
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format ''
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 14:30:45"
+    - result.systemout ShouldContainSubstring "2024-12-25 14:30:45"
 
 - name: format - predefined iso format
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' -tz 'UTC' --format 'iso'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' -tz 'UTC' --format 'iso'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25T14:30:45Z"
+    - result.systemout ShouldContainSubstring "2024-12-25T14:30:45Z"
 
 - name: format - predefined sql format
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45' --format 'sql'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45' --format 'sql'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-12-25 14:30:45"
+    - result.systemout ShouldContainSubstring "2024-12-25 14:30:45"
 
 - name: format - predefined human format
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format 'human'
+      go run ./cmd/calcdate -x '2024-12-25' --format 'human'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Wednesday, December 25, 2024"
+    - result.systemout ShouldContainSubstring "Wednesday, December 25, 2024"
 
 - name: format - predefined compact format
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25' --format 'compact'
+      go run ./cmd/calcdate -x '2024-12-25' --format 'compact'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "20241225"
+    - result.systemout ShouldContainSubstring "20241225"
 
 - name: format - predefined timestamp format
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 00:00:00' -tz 'UTC' --format 'ts'
+      go run ./cmd/calcdate -x '2024-01-01 00:00:00' -tz 'UTC' --format 'ts'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "1704067200"
+    - result.systemout ShouldContainSubstring "1704067200"
 
 # Format with operations
 - name: format - Unix format with operations
@@ -1037,10 +1055,10 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-12-25 14:30:45 | +1d | endOfDay' --format '%A, %B %d at %H:%M:%S'
+      go run ./cmd/calcdate -x '2024-12-25 14:30:45 | +1d | endOfDay' --format '%A, %B %d at %H:%M:%S'
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "Thursday, December 26 at 23:59:59"
+    - result.systemout ShouldContainSubstring "Thursday, December 26 at 23:59:59"
 
 # Edge cases and error conditions
 - name: expr - leap year handling
@@ -1048,67 +1066,67 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-02-29' --format sql
+      go run ./cmd/calcdate -x '2024-02-29' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-02-29 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-02-29 00:00:00"
 
 - name: expr - non leap year
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2023-02-28 +1d' --format sql
+      go run ./cmd/calcdate -x '2023-02-28 +1d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2023-03-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2023-03-01 00:00:00"
 
 - name: expr - month boundary
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-31 +1M' --format sql
+      go run ./cmd/calcdate -x '2024-01-31 +1M' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-02 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-02 00:00:00"
 
 - name: expr - year boundary
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2023-12-31 +1d' --format sql
+      go run ./cmd/calcdate -x '2023-12-31 +1d' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00"
 
 - name: expr - startOfQuarter
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-05-15 | startOfQuarter' --format sql
+      go run ./cmd/calcdate -x '2024-05-15 | startOfQuarter' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-04-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-04-01 00:00:00"
 
 - name: expr - endOfQuarter
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-05-15 | endOfQuarter' --format sql
+      go run ./cmd/calcdate -x '2024-05-15 | endOfQuarter' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-06-30 23:59:59"
+    - result.systemout ShouldContainSubstring "2024-06-30 23:59:59"
 
 - name: expr - complex pipeline
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x 'today | startOfMonth | -1d | endOfMonth' --format sql | grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2} 23:59:59"
+      go run ./cmd/calcdate -x 'today | startOfMonth | -1d | endOfMonth' --format sql | grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2} 23:59:59"
     assertions:
     - result.code ShouldEqual 0
 
@@ -1118,7 +1136,7 @@ testcases:
     script: |
       cd {{.venom.testsuite.workdir}}/..
       # Find next Monday from 2024-01-01 (which is a Monday)
-      go run . -x 'monday' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$"
+      go run ./cmd/calcdate -x 'monday' --format sql | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00$"
     assertions:
     - result.code ShouldEqual 0
 
@@ -1127,17 +1145,17 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-06-15 -3M' --format sql
+      go run ./cmd/calcdate -x '2024-06-15 -3M' --format sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-03-15 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-03-15 00:00:00"
 
 - name: expr - multiple format outputs
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      ts=$(go run . -x '2024-01-01T00:00:00' -tz UTC --format ts)
+      ts=$(go run ./cmd/calcdate -x '2024-01-01T00:00:00' -tz UTC --format ts)
       [ "$ts" = "1704067200" ]
     assertions:
     - result.code ShouldEqual 0
@@ -1147,17 +1165,17 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01' -f sql
+      go run ./cmd/calcdate -x '2024-01-01' -f sql
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "2024-01-01 00:00:00"
+    - result.systemout ShouldContainSubstring "2024-01-01 00:00:00"
 
 - name: expr - range with same start and end
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x 'today ... today' --format sql | grep -E "00:00:00 - [0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00"
+      go run ./cmd/calcdate -x 'today ... today' --format sql | grep -E "00:00:00 - [0-9]{4}-[0-9]{2}-[0-9]{2} 00:00:00"
     assertions:
     - result.code ShouldEqual 0
 
@@ -1166,27 +1184,27 @@ testcases:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-01-01 |' --format sql 2>&1 | grep -q -i "error\|failed" && echo "FAILED" || echo "PASSED"
+      go run ./cmd/calcdate -x '2024-01-01 |' --format sql 2>&1 | grep -q -i "error\|failed" && echo "FAILED" || echo "PASSED"
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "FAILED"
+    - result.systemout ShouldContainSubstring "FAILED"
 
 - name: expr - invalid date
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      go run . -x '2024-13-01' --format sql 2>&1 | grep -q -i "error\|failed\|invalid" && echo "ERROR" || echo "OK"
+      go run ./cmd/calcdate -x '2024-13-01' --format sql 2>&1 | grep -q -i "error\|failed\|invalid" && echo "ERROR" || echo "OK"
     assertions:
     - result.code ShouldEqual 0
-    - result.systemout ShouldContain "ERROR"
+    - result.systemout ShouldContainSubstring "ERROR"
 
 - name: expr - iteration exceeds range
   steps:
   - type: exec
     script: |
       cd {{.venom.testsuite.workdir}}/..
-      result=$(go run . -x '2024-01-01 ... 2024-01-02' --each 1w --format sql | wc -l | tr -d ' ')
+      result=$(go run ./cmd/calcdate -x '2024-01-01 ... 2024-01-02' --each 1w --format sql | wc -l | tr -d ' ')
       [ "$result" = "1" ]
     assertions:
     - result.code ShouldEqual 0
