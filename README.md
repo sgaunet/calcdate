@@ -6,6 +6,7 @@
 [![coverage](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/coverage.yml)
 [![Snapshot Build](https://github.com/sgaunet/calcdate/actions/workflows/snapshot.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/snapshot.yml)
 [![Release Build](https://github.com/sgaunet/calcdate/actions/workflows/release.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/release.yml)
+[![Vulnerability Scan](https://github.com/sgaunet/calcdate/actions/workflows/vulnerability-scan.yml/badge.svg)](https://github.com/sgaunet/calcdate/actions/workflows/vulnerability-scan.yml)
 [![GoDoc](https://godoc.org/github.com/sgaunet/calcdate?status.svg)](https://godoc.org/github.com/sgaunet/calcdate)
 [![License](https://img.shields.io/github/license/sgaunet/calcdate.svg)](LICENSE)
 
