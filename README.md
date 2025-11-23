@@ -72,6 +72,8 @@ Usage of calcdate:
   -format string
         Output format: iso, sql, ts, human, compact, or Unix date format
         (e.g., '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S %Z')
+  -list-ops
+        List all available operations
   -list-tz
         List timezones
   -skip-weekends
@@ -88,6 +90,21 @@ Usage of calcdate:
 ```
 
 **The -expr (or -x) parameter is required, or provide the expression via stdin.**
+
+### Discovering Operations
+
+To see all available date operations with examples, use:
+
+```bash
+calcdate --list-ops
+```
+
+This displays a comprehensive list of all operations organized by category:
+- **Date Values**: `today`, `now`, `yesterday`, `tomorrow`, weekday names
+- **Arithmetic Operations**: `+` and `-` with time units (s, m, h, d, w, M, Y, q)
+- **Boundary Operations**: `startOfMonth`, `endOfMonth`, `startOfWeek`, etc.
+- **Value Setters**: `day`, `time`
+- **Transform Operations**: `round`, `trunc`
 
 ## Examples
 
