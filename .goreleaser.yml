@@ -40,7 +40,7 @@ changelog:
 
 brews:
   - homepage: 'https://github.com/sgaunet/calcdate'
-    description: 'A simple and efficient Markdown to HTML converter'
+    description: 'A modern command-line utility for date calculations and operations with intuitive expression syntax'
     directory: Formula
     commit_author:
       name: sgaunet
