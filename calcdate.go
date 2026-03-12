@@ -1,4 +1,3 @@
-// Package calcdate provides date calculation and manipulation functionality.
 package calcdate
 
 import (
