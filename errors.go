@@ -2,9 +2,8 @@ package calcdate
 
 import "errors"
 
-// Static errors for consistent error handling.
+// ErrOperationWithoutBaseDate is returned when an operation node is evaluated without a base date.
 var (
-	// Parser errors.
 	ErrOperationWithoutBaseDate    = errors.New("operation node cannot be evaluated without a base date")
 	ErrInvalidPipelineOperation    = errors.New("invalid operation in pipeline")
 	ErrRangeNodesSeparateHandling  = errors.New("range nodes must be handled separately")
@@ -55,9 +54,8 @@ var (
 	ErrInvalidSecond               = errors.New("invalid second")
 )
 
-// Constants for magic numbers.
+// HoursInDay is the number of hours in a day.
 const (
-	// Time-related constants.
 	HoursInDay       = 24
 	MinutesInHour    = 60
 	SecondsInMinute  = 60
@@ -66,22 +64,22 @@ const (
 	MonthsInQuarter  = 3
 	QuartersInYear   = 4
 	MaxIterations    = 10000
-	
-	// Date boundaries.
+
+	// FirstQuarterEnd is the last month of Q1.
 	FirstQuarterEnd  = 3
 	SecondQuarterEnd = 6
 	ThirdQuarterEnd  = 9
 	FourthQuarterEnd = 12
-	
-	// Time boundaries.
+
+	// NoonHour is the hour at which day rounding flips.
 	NoonHour         = 12
 	HalfMinute       = 30
 	HalfSecond       = 30
-	
-	// Parser constants.
+
+	// MinIntervalLength is the minimum length of an interval string.
 	MinIntervalLength = 2
 	TransformParts    = 2
-	
-	// Complexity thresholds.
+
+	// MaxTokenizerNestDepth is the maximum nesting depth for the tokenizer.
 	MaxTokenizerNestDepth = 10
 )

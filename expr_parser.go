@@ -2,6 +2,7 @@ package calcdate
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -187,13 +188,11 @@ func (p *ExprParser) parseVariableToken(token Token) (ExprNode, error) {
 //nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parseKeywordToken(token Token) (ExprNode, error) {
 	// Check if it's a date keyword
-	dateKeywords := []string{"today", "now", "yesterday", "tomorrow", 
+	dateKeywords := []string{"today", "now", "yesterday", "tomorrow",
 		"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
-	for _, kw := range dateKeywords {
-		if token.Value == kw {
-			p.advance()
-			return &DateNode{Value: token.Value}, nil
-		}
+	if slices.Contains(dateKeywords, token.Value) {
+		p.advance()
+		return &DateNode{Value: token.Value}, nil
 	}
 	// Otherwise it's an operation keyword
 	return p.parseOperation()

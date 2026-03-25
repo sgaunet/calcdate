@@ -2,6 +2,8 @@ name: snapshot
 
 on:
   push:
+    tags-ignore:
+      - '**'
 
 permissions:
   contents: read
@@ -16,9 +18,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '>=1.24'
+          go-version-file: 'go.mod'
       - name: Install task
         uses: jaxxstorm/action-install-gh-release@v1.12.0
         with:

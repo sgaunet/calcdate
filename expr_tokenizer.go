@@ -2,6 +2,7 @@ package calcdate
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -349,12 +350,7 @@ func (t *Tokenizer) isValidTimezoneName(name string) bool {
 	}
 	
 	upperName := strings.ToUpper(name)
-	for _, tz := range validTimezones {
-		if upperName == tz {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTimezones, upperName)
 }
 
 func (t *Tokenizer) isTime() bool {
