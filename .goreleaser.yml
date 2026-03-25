@@ -1,10 +1,11 @@
 version: 2
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod download
-    # you may remove this if you don't need go generate
-    #- go generate ./...
+    - mkdir -p completions
+    - go run ./cmd/calcdate completion bash > completions/calcdate.bash
+    - go run ./cmd/calcdate completion zsh > completions/_calcdate
+    - go run ./cmd/calcdate completion fish > completions/calcdate.fish
 builds:
   - env:
       - CGO_ENABLED=0
@@ -22,7 +23,6 @@ builds:
     goarm:
       - "6"
       - "7"
-    # dir: src
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
@@ -53,5 +53,11 @@ brews:
     url_template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
     install: |
       bin.install "{{ .ArtifactName }}" => "calcdate"
+      output = Utils.safe_popen_read(bin/"calcdate", "completion", "bash")
+      (bash_completion/"calcdate").write output
+      output = Utils.safe_popen_read(bin/"calcdate", "completion", "zsh")
+      (zsh_completion/"_calcdate").write output
+      output = Utils.safe_popen_read(bin/"calcdate", "completion", "fish")
+      (fish_completion/"calcdate.fish").write output
     test: |
-      system "#{bin}/calcdate", "-h"
+      system "#{bin}/calcdate", "--version"
