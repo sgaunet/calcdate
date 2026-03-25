@@ -178,6 +178,35 @@ func TestTransformParsing(t *testing.T) {
 	assert.NotNil(t, transform.EndExpr)
 }
 
+func TestExprParserErrorSuggestions(t *testing.T) {
+	tests := []struct {
+		input           string
+		description     string
+		expectedContain string
+	}{
+		{
+			input:           "today | startofmoonth",
+			description:     "typo in startofmonth",
+			expectedContain: "startofmonth",
+		},
+		{
+			input:           "today | endofwek",
+			description:     "typo in endofweek",
+			expectedContain: "endofweek",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			parser := NewExprParser(tc.input)
+			_, err := parser.Parse(tc.input)
+			require.Error(t, err)
+			assert.ErrorIs(t, err, ErrUnknownOperation)
+			assert.Contains(t, err.Error(), tc.expectedContain)
+		})
+	}
+}
+
 func TestOperations(t *testing.T) {
 	baseTime := time.Date(2024, 1, 15, 14, 30, 0, 0, time.UTC)
 	

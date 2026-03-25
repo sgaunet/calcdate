@@ -9,6 +9,7 @@ import (
 type ExprParser struct {
 	tokens []Token
 	pos    int
+	input  string
 }
 
 // NewExprParser creates a new expression parser.
@@ -25,9 +26,10 @@ func (p *ExprParser) Parse(input string) (ExprNode, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tokenization failed: %w", err)
 	}
-	
+
 	p.tokens = tokens
 	p.pos = 0
+	p.input = input
 	
 	return p.parseExpression()
 }
@@ -221,7 +223,13 @@ func (p *ExprParser) parseOperation() (ExprNode, error) {
 		return p.parseUnitOperation(token)
 	case TokenKeyword:
 		return p.parseKeywordOperation(token)
-	case TokenEOF, TokenDate, TokenPipe, TokenRange, TokenVariable,
+	case TokenDate:
+		// Check if the value is a misspelled operation
+		if suggestions := findSuggestions(token.Value, validOperationNames()); len(suggestions) > 0 {
+			return nil, newUnknownOperationError(token.Value, token.Pos, p.input)
+		}
+		return nil, fmt.Errorf("%w: got %v", ErrExpectedOperationAfterPipe, token)
+	case TokenEOF, TokenPipe, TokenRange, TokenVariable,
 		TokenNumber, TokenTime, TokenComma, TokenLParen, TokenRParen:
 		return nil, fmt.Errorf("%w: got %v", ErrExpectedOperationAfterPipe, token)
 	default:
@@ -276,7 +284,7 @@ func (p *ExprParser) parseKeywordOperation(token Token) (ExprNode, error) {
 		return &OperationNode{Op: keyword, Value: ""}, nil
 	}
 	
-	return nil, fmt.Errorf("%w: %s", ErrUnknownOperation, keyword)
+	return nil, newUnknownOperationError(keyword, token.Pos, p.input)
 }
 
 func (p *ExprParser) isArgumentOperation(keyword string) bool {
