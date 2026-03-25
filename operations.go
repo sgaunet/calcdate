@@ -42,7 +42,7 @@ func ParseDateValue(value string, ctx *EvalContext) (time.Time, error) {
 		return t, nil
 	}
 	
-	return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidDateValue, value)
+	return time.Time{}, newInvalidDateValueError(value)
 }
 
 func parseBuiltinKeywords(value string, now time.Time, loc *time.Location) (time.Time, bool) {
@@ -163,7 +163,7 @@ func applyRelativeDelta(base time.Time, num int, unit string) (time.Time, error)
 	case "q":
 		return base.AddDate(0, num*MonthsInQuarter, 0), nil
 	default:
-		return time.Time{}, fmt.Errorf("%w: %s", ErrUnknownUnit, unit)
+		return time.Time{}, newUnknownUnitError(unit)
 	}
 }
 
@@ -234,7 +234,7 @@ func ApplyOperation(date time.Time, op, value string, loc *time.Location) (time.
 		return result.t, result.err
 	}
 	
-	return time.Time{}, fmt.Errorf("%w: %s", ErrUnknownOperation, op)
+	return time.Time{}, newUnknownOperationError(op, -1, "")
 }
 
 type operationResult struct {
