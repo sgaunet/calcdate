@@ -1,20 +1,47 @@
 # https://taskfile.dev
 version: '3'
+includes:
+  dev: ./Taskfile_dev.yml
+
 vars:
   BINFILE: calcdate
 
 tasks:
   default:
     desc: "List all tasks"
+    preconditions:
+      - sh: test -f .git/hooks/pre-commit
+        msg: "Pre-commit hook not found. Please run 'pre-commit install' to set it up."
     cmds:
       - task -a
+
+  check-before-commit:
+    desc: "Run checks before committing"
+    preconditions:
+      - test -f .git/hooks/pre-commit
+    deps:
+      - test
+      - snapshot
+    cmds:
+      - task: lint
 
   lint:
     desc: "Run linter"
     cmds:
       - go generate ./...
       - golangci-lint run
-  
+
+  test:
+    desc: "Run unit tests with race detection"
+    cmds:
+      - go test -count=2 -race ./...
+
+  tests:
+    desc: "Run e2e tests"
+    dir: e2etests
+    cmds:
+      - venom run testsuite.yml --output-dir log
+
   coverage:
     desc: "Generate coverage report"
     cmds:
@@ -28,17 +55,24 @@ tasks:
       - go tool cover -func profile.cov | grep '^total:' | awk '{print $3}' | sed "s/%//"
       - rm -f profile.cov
 
-  tests:
-    desc: "Run tests"
-    dir: e2etests
+  build:
+    desc: "Build binary"
     cmds:
-      - venom run testsuite.yml --output-dir log
+      - CGO_ENABLED=0 go build -o calcdate ./cmd/calcdate
+
+  image:
+    desc: "Build and push Docker image"
+    deps:
+      - build
+    cmds:
+      - docker build --no-cache --build-arg VERSION=development . -t ghcr.io/sgaunet/calcdate:latest
+      - docker push ghcr.io/sgaunet/calcdate:latest
 
   snapshot:
     desc: "Create a snapshot"
     cmds:
       - GITLAB_TOKEN="" goreleaser --clean --snapshot
-    
+
   release:
     desc: "Create a release"
     cmds:
