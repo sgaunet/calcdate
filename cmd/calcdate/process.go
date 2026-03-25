@@ -1,0 +1,335 @@
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	calcdate "github.com/sgaunet/calcdate/v2"
+)
+
+// errNoExpressionProvided is returned when no expression is provided via stdin.
+var errNoExpressionProvided = errors.New("no expression provided via stdin")
+
+// printOperationsList prints a comprehensive list of all available operations.
+func printOperationsList() {
+	registry := calcdate.GetOperationRegistry()
+
+	fmt.Println("Available Operations:")
+	fmt.Println()
+
+	for _, category := range registry {
+		// Print category header
+		fmt.Printf("%s:\n", strings.ToUpper(category.Name))
+
+		// Print each operation in the category
+		for _, op := range category.Operations {
+			fmt.Printf("  %-20s %s\n", op.Name, op.Description)
+			fmt.Printf("  %-20s Example: %s\n", "", op.Example)
+
+			// Print aliases if any
+			if len(op.Aliases) > 0 {
+				fmt.Printf("  %-20s Aliases: %s\n", "", strings.Join(op.Aliases, ", "))
+			}
+			fmt.Println()
+		}
+	}
+
+	fmt.Println("For more information, see the README or visit:")
+	fmt.Println("https://github.com/sgaunet/calcdate")
+}
+
+// isStdinRedirected checks if stdin is redirected (piped or from file).
+// Returns true if stdin is redirected, false if it's a terminal.
+func isStdinRedirected() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	// Check if stdin is a character device (terminal)
+	// If it's NOT a character device, it's redirected
+	return (stat.Mode() & os.ModeCharDevice) == 0
+}
+
+// readExprFromStdin reads the date expression from stdin.
+// It reads the first non-empty line and returns it as the expression.
+func readExprFromStdin() (string, error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			return line, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error reading from stdin: %w", err)
+	}
+	return "", errNoExpressionProvided
+}
+
+// processExpressionMode handles the new expression syntax.
+func processExpressionMode(expr, each, transform, format, tzStr string, skipWeekends bool) {
+	// Parse timezone
+	var tz *time.Location
+	var err error
+	if tzStr != "" {
+		tz, err = time.LoadLocation(tzStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid timezone: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		tz = time.Local //nolint:gosmopolitan // intentional default to local timezone
+	}
+
+	// Parse the expression
+	parser := calcdate.NewExprParser(expr)
+	node, err := parser.Parse(expr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse expression: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Check if it's a range expression (directly or within a pipe)
+	if rangeNode, ok := node.(*calcdate.RangeNode); ok {
+		processRangeExpression(rangeNode, each, transform, format, tz, skipWeekends)
+		return
+	}
+
+	// Check if it's a pipe with a range as base
+	if pipeNode, ok := node.(*calcdate.PipeNode); ok {
+		if rangeNode, ok := pipeNode.Base.(*calcdate.RangeNode); ok {
+			// This is a range with pipeline operations
+			processRangeWithPipeline(rangeNode, pipeNode.Operations, each, transform, format, tz, skipWeekends)
+			return
+		}
+	}
+
+	// Single date expression
+	ctx := &calcdate.EvalContext{
+		Now:      time.Now(),
+		Timezone: tz,
+	}
+
+	result, err := node.Evaluate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to evaluate expression: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Format and print the result
+	output := formatOutput(result, format, tz)
+	fmt.Println(output)
+}
+
+// processRangeWithPipeline handles range expressions with pipeline operations
+//
+//nolint:lll // long function signature is readable
+func processRangeWithPipeline(rangeNode *calcdate.RangeNode, operations []calcdate.ExprNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
+	ctx := &calcdate.EvalContext{
+		Now:      time.Now(),
+		Timezone: tz,
+	}
+
+	// Evaluate start and end
+	start, err := rangeNode.Start.Evaluate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to evaluate range start: %v\n", err)
+		os.Exit(1)
+	}
+
+	end, err := rangeNode.End.Evaluate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to evaluate range end: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Apply pipeline operations to the end date
+	for _, op := range operations {
+		if opNode, ok := op.(*calcdate.OperationNode); ok {
+			end, err = calcdate.ApplyOperation(end, opNode.Op, opNode.Value, tz)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to apply operation: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "Unknown operation type\n")
+			os.Exit(1)
+		}
+	}
+
+	// Continue with the rest of the range processing
+	processRangeExpressionInternal(start, end, each, transform, format, tz, skipWeekends)
+}
+
+// processRangeExpression handles range expressions with optional iterations
+//
+//nolint:lll // long function signature is readable
+func processRangeExpression(rangeNode *calcdate.RangeNode, each, transform, format string, tz *time.Location, skipWeekends bool) {
+	ctx := &calcdate.EvalContext{
+		Now:      time.Now(),
+		Timezone: tz,
+	}
+
+	// Evaluate start and end
+	start, err := rangeNode.Start.Evaluate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to evaluate range start: %v\n", err)
+		os.Exit(1)
+	}
+
+	end, err := rangeNode.End.Evaluate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to evaluate range end: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Continue with common processing
+	processRangeExpressionInternal(start, end, each, transform, format, tz, skipWeekends)
+}
+
+// processRangeExpressionInternal handles the common logic for range processing
+//
+//nolint:lll // long function signature is readable
+func processRangeExpressionInternal(start, end time.Time, each, transform, format string, tz *time.Location, skipWeekends bool) {
+	transformNode, err := parseTransformIfProvided(transform)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse transform: %v\n", err)
+		os.Exit(1)
+	}
+
+	if each != "" {
+		processIterations(start, end, each, transformNode, format, tz, skipWeekends)
+	} else {
+		processSingleRange(start, end, transformNode, format, tz)
+	}
+}
+
+func parseTransformIfProvided(transform string) (*calcdate.TransformNode, error) {
+	if transform == "" {
+		return nil, nil //nolint:nilnil // returning nil transform and nil error is correct for empty input
+	}
+
+	parser := calcdate.NewExprParser("")
+	node, err := parser.ParseTransform(transform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse transform: %w", err)
+	}
+	return node, nil
+}
+
+//nolint:lll // long function signature is readable
+func processIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+	if isSpecialInterval(each) {
+		processSpecialIntervalIterations(start, end, each, transformNode, format, tz, skipWeekends)
+	} else {
+		processRegularIntervalIterations(start, end, each, transformNode, format, tz, skipWeekends)
+	}
+}
+
+func isSpecialInterval(each string) bool {
+	return strings.HasSuffix(each, "M") || strings.HasSuffix(each, "Y") || strings.HasSuffix(each, "q")
+}
+
+//nolint:lll // long function signature is readable
+func processSpecialIntervalIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+	results, err := calcdate.IterateWithSpecialInterval(start, end, each, transformNode, tz)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to iterate: %v\n", err)
+		os.Exit(1)
+	}
+	printFilteredResults(results, format, tz, skipWeekends)
+}
+
+//nolint:lll // long function signature is readable
+func processRegularIntervalIterations(start, end time.Time, each string, transformNode *calcdate.TransformNode, format string, tz *time.Location, skipWeekends bool) {
+	interval, err := calcdate.ParseInterval(each)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse interval: %v\n", err)
+		os.Exit(1)
+	}
+
+	iterator := calcdate.NewRangeIterator(start, end, interval, transformNode, tz)
+	results, err := iterator.Iterate()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to iterate: %v\n", err)
+		os.Exit(1)
+	}
+	printFilteredResults(results, format, tz, skipWeekends)
+}
+
+func printFilteredResults(results []calcdate.IterationResult, format string, tz *time.Location, skipWeekends bool) {
+	for _, result := range results {
+		if skipWeekends && isWeekend(result.BeginTime) {
+			continue
+		}
+		printIterationResult(result, format, tz)
+	}
+}
+
+func processSingleRange(start, end time.Time, transformNode *calcdate.TransformNode, format string, tz *time.Location) {
+	if transformNode != nil {
+		ctx := &calcdate.EvalContext{
+			Now:      time.Now(),
+			Timezone: tz,
+		}
+		var err error
+		start, end, err = calcdate.EvaluateTransform(transformNode, start, end, 0, ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to apply transform: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	startStr := formatOutput(start, format, tz)
+	endStr := formatOutput(end, format, tz)
+	fmt.Printf("%s - %s\n", startStr, endStr)
+}
+
+// formatOutput formats a time according to the specified format.
+func formatOutput(t time.Time, format string, tz *time.Location) string {
+	if tz != nil {
+		t = t.In(tz)
+	}
+
+	switch format {
+	case "iso":
+		return t.Format(time.RFC3339)
+	case "sql":
+		return t.Format("2006-01-02 15:04:05")
+	case "ts":
+		return strconv.FormatInt(t.Unix(), 10)
+	case "human":
+		return t.Format("Monday, January 2, 2006")
+	case "compact":
+		return t.Format("20060102")
+	case "":
+		// Default format (sql)
+		return t.Format("2006-01-02 15:04:05")
+	default:
+		// Check if this is a Unix date format (contains %)
+		if strings.Contains(format, "%") {
+			// Convert Unix format to Go format
+			goFormat := calcdate.ConvertUnixFormatToGolang(format)
+			return t.Format(goFormat)
+		}
+		// Otherwise treat as Go format (backward compatibility)
+		return t.Format(format)
+	}
+}
+
+// printIterationResult prints a single iteration result.
+func printIterationResult(result calcdate.IterationResult, format string, tz *time.Location) {
+	beginStr := formatOutput(result.BeginTime, format, tz)
+	endStr := formatOutput(result.EndTime, format, tz)
+	fmt.Printf("%s - %s\n", beginStr, endStr)
+}
+
+// isWeekend checks if a date is a weekend.
+func isWeekend(t time.Time) bool {
+	weekday := t.Weekday()
+	return weekday == time.Saturday || weekday == time.Sunday
+}

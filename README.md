@@ -230,6 +230,41 @@ brew install sgaunet/tools/calcdate
 go install github.com/sgaunet/calcdate/v2@latest
 ```
 
+## Shell Completion
+
+calcdate supports shell completion for bash, zsh, fish, and powershell.
+
+### Bash
+
+```bash
+source <(calcdate completion bash)
+
+# To persist, add to ~/.bashrc or install system-wide:
+calcdate completion bash > /etc/bash_completion.d/calcdate
+```
+
+### Zsh
+
+```bash
+source <(calcdate completion zsh)
+
+# To persist:
+calcdate completion zsh > "${fpath[1]}/_calcdate"
+```
+
+### Fish
+
+```bash
+calcdate completion fish | source
+
+# To persist:
+calcdate completion fish > ~/.config/fish/completions/calcdate.fish
+```
+
+### Homebrew
+
+If installed via Homebrew, completions are automatically installed for bash, zsh, and fish.
+
 ## Upgrading from v1.x
 
 If you're upgrading from v1.x, please read the [Migration Guide](MIGRATION.md) as v2.0 introduces breaking changes.

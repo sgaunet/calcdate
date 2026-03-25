@@ -298,8 +298,8 @@ func GetInterval(d1 *Date, d2 *Date) time.Duration {
 	return -diff
 }
 
-// ListTZ prints all available timezones to stdout.
-func ListTZ() {
+// GetTimezones returns all available timezone names as a string slice.
+func GetTimezones() []string {
 	var zoneDirs = map[string]string{
 		"android":   "/system/usr/share/zoneinfo/",
 		"darwin":    "/usr/share/zoneinfo/",
@@ -344,9 +344,13 @@ func ListTZ() {
 			continue
 		}
 	}
-	// Now we Can range timeZones for printing
-	for _, i := range timeZones {
-		fmt.Println(i)
+	return timeZones
+}
+
+// ListTZ prints all available timezones to stdout.
+func ListTZ() {
+	for _, tz := range GetTimezones() {
+		fmt.Println(tz)
 	}
 }
 
