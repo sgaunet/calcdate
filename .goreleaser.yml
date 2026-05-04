@@ -53,6 +53,7 @@ brews:
     url_template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
     install: |
       bin.install "{{ .ArtifactName }}" => "calcdate"
+      chmod 0555, bin/"calcdate"
       output = Utils.safe_popen_read(bin/"calcdate", "completion", "bash")
       (bash_completion/"calcdate").write output
       output = Utils.safe_popen_read(bin/"calcdate", "completion", "zsh")
@@ -60,4 +61,4 @@ brews:
       output = Utils.safe_popen_read(bin/"calcdate", "completion", "fish")
       (fish_completion/"calcdate.fish").write output
     test: |
-      system "#{bin}/calcdate", "--version"
+      system "#{bin}/calcdate", "-v"
