@@ -1,0 +1,20 @@
+name: Test
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/mise
+          key: mise-${{ hashFiles('mise.toml') }}
+      - run: mise install
+      - run: mise exec -- task test
