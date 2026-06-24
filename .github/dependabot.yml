@@ -3,15 +3,9 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-  - package-ecosystem: docker
+      interval: monthly
+  - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 10
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 10
+
