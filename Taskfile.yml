@@ -32,6 +32,8 @@ tasks:
       - golangci-lint run
 
   test:
+    aliases:
+      - test:unit
     desc: "Run unit tests with race detection"
     cmds:
       - go test -count=2 -race ./...
@@ -48,9 +50,9 @@ tasks:
       - go test -coverpkg=./... -coverprofile=profile.cov ./...
       - |
         if [ "$(uname)" = "Darwin" ]; then
-          sed -i '' '/cmd/d' profile.cov    # macOS version
+          sed -i '' '/cmd/d' profile.cov
         else
-          sed -i '/cmd/d' profile.cov       # Linux version
+          sed -i '/cmd/d' profile.cov
         fi
       - go tool cover -func profile.cov | grep '^total:' | awk '{print $3}' | sed "s/%//"
       - rm -f profile.cov
@@ -58,28 +60,21 @@ tasks:
   build:
     desc: "Build binary"
     cmds:
-      - CGO_ENABLED=0 go build -o calcdate ./cmd/calcdate
+      - CGO_ENABLED=0 go build -o {{.BINFILE}} ./cmd/v2
 
-  image:
-    desc: "Build and push Docker image"
-    deps:
-      - build
-    cmds:
-      - docker build --no-cache --build-arg VERSION=development . -t ghcr.io/sgaunet/calcdate:latest
-      - docker push ghcr.io/sgaunet/calcdate:latest
+
 
   snapshot:
     desc: "Create a snapshot"
     cmds:
-      - GITLAB_TOKEN="" goreleaser --clean --snapshot
+      - GITEA_TOKEN="" goreleaser --clean --snapshot
 
   release:
     desc: "Create a release"
     cmds:
-      - GITLAB_TOKEN="" goreleaser --clean
+      - GITEA_TOKEN="" goreleaser --clean
 
   godoc:
     desc: "Go documentation of calcdate"
     cmds:
       - go doc -http -c github.com/sgaunet/calcdate/v2
-    
