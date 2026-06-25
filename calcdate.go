@@ -302,12 +302,12 @@ func GetInterval(d1 *Date, d2 *Date) time.Duration {
 func GetTimezones() []string {
 	var zoneDirs = map[string]string{
 		"android":   "/system/usr/share/zoneinfo/",
-		"darwin":    "/usr/share/zoneinfo/",
-		"dragonfly": "/usr/share/zoneinfo/",
-		"freebsd":   "/usr/share/zoneinfo/",
-		"linux":     "/usr/share/zoneinfo/",
-		"netbsd":    "/usr/share/zoneinfo/",
-		"openbsd":   "/usr/share/zoneinfo/",
+		"darwin":    unixZoneinfoPath,
+		"dragonfly": unixZoneinfoPath,
+		"freebsd":   unixZoneinfoPath,
+		"linux":     unixZoneinfoPath,
+		"netbsd":    unixZoneinfoPath,
+		"openbsd":   unixZoneinfoPath,
 		"solaris":   "/usr/share/lib/zoneinfo/",
 	}
 

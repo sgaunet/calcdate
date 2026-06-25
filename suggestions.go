@@ -136,24 +136,24 @@ func autoThreshold(inputLen int) int {
 // validOperationNames returns all recognized operation keywords.
 func validOperationNames() []string {
 	return []string{
-		"start", "startofday", "end", "endofday",
-		"startofweek", "endofweek",
-		"startofmonth", "endofmonth",
-		"startofyear", "endofyear",
-		"startofquarter", "endofquarter",
-		"startofhour", "endofhour",
-		"startofminute", "endofminute",
-		"startofsecond", "endofsecond",
-		"day", "time", "round", "trunc",
+		startKeyword, startOfDayKeyword, endKeyword, endOfDayKeyword,
+		startOfWeekKeyword, endOfWeekKeyword,
+		startOfMonthKeyword, endOfMonthKeyword,
+		startOfYearKeyword, endOfYearKeyword,
+		startOfQuarterKeyword, endOfQuarterKeyword,
+		startOfHourKeyword, endOfHourKeyword,
+		startOfMinuteKeyword, endOfMinuteKeyword,
+		startOfSecondKeyword, endOfSecondKeyword,
+		dayKeyword, "time", roundKeyword, truncKeyword,
 	}
 }
 
 // validDateKeywords returns all recognized date keywords.
 func validDateKeywords() []string {
 	return []string{
-		"today", "now", "yesterday", "tomorrow",
-		"monday", "tuesday", "wednesday", "thursday",
-		"friday", "saturday", "sunday",
+		todayKeyword, nowKeyword, yesterdayKeyword, tomorrowKeyword,
+		mondayKeyword, tuesdayKeyword, wednesdayKeyword, thursdayKeyword,
+		fridayKeyword, saturdayKeyword, sundayKeyword,
 	}
 }
 
