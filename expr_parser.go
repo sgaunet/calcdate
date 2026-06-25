@@ -188,8 +188,8 @@ func (p *ExprParser) parseVariableToken(token Token) (ExprNode, error) {
 //nolint:ireturn // returns interface by design for AST nodes
 func (p *ExprParser) parseKeywordToken(token Token) (ExprNode, error) {
 	// Check if it's a date keyword
-	dateKeywords := []string{"today", "now", "yesterday", "tomorrow",
-		"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
+	dateKeywords := []string{todayKeyword, nowKeyword, yesterdayKeyword, tomorrowKeyword,
+		mondayKeyword, tuesdayKeyword, wednesdayKeyword, thursdayKeyword, fridayKeyword, saturdayKeyword, sundayKeyword}
 	if slices.Contains(dateKeywords, token.Value) {
 		p.advance()
 		return &DateNode{Value: token.Value}, nil
@@ -287,18 +287,13 @@ func (p *ExprParser) parseKeywordOperation(token Token) (ExprNode, error) {
 }
 
 func (p *ExprParser) isArgumentOperation(keyword string) bool {
-	const (
-		dayKeyword   = "day"
-		timeKeyword  = "time"
-		roundKeyword = "round"
-		truncKeyword = "trunc"
-	)
+	const timeKeyword = "time"
 	return keyword == dayKeyword || keyword == timeKeyword || keyword == roundKeyword || keyword == truncKeyword
 }
 
 func (p *ExprParser) isBoundaryOperation(keyword string) bool {
 	return strings.HasPrefix(keyword, "startof") || strings.HasPrefix(keyword, "endof") ||
-		keyword == "start" || keyword == "end"
+		keyword == startKeyword || keyword == endKeyword
 }
 
 //nolint:ireturn // returns interface by design for AST nodes

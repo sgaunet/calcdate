@@ -49,15 +49,15 @@ func parseBuiltinKeywords(value string, now time.Time, loc *time.Location) (time
 	value = strings.ToLower(value)
 	
 	switch value {
-	case "today":
+	case todayKeyword:
 		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), true
-	case "now":
+	case nowKeyword:
 		return now, true
-	case "yesterday":
+	case yesterdayKeyword:
 		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -1), true
-	case "tomorrow":
+	case tomorrowKeyword:
 		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, 1), true
-	case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
+	case mondayKeyword, tuesdayKeyword, wednesdayKeyword, thursdayKeyword, fridayKeyword, saturdayKeyword, sundayKeyword:
 		return nextWeekday(now, value, loc), true
 	default:
 		return time.Time{}, false
@@ -80,19 +80,19 @@ func nextWeekday(from time.Time, weekdayName string, loc *time.Location) time.Ti
 
 func parseWeekday(name string) time.Weekday {
 	switch strings.ToLower(name) {
-	case "sunday":
+	case sundayKeyword:
 		return time.Sunday
-	case "monday":
+	case mondayKeyword:
 		return time.Monday
-	case "tuesday":
+	case tuesdayKeyword:
 		return time.Tuesday
-	case "wednesday":
+	case wednesdayKeyword:
 		return time.Wednesday
-	case "thursday":
+	case thursdayKeyword:
 		return time.Thursday
-	case "friday":
+	case fridayKeyword:
 		return time.Friday
-	case "saturday":
+	case saturdayKeyword:
 		return time.Saturday
 	default:
 		return time.Sunday
@@ -276,9 +276,9 @@ func applyBoundaryOperation(date time.Time, op string, loc *time.Location) (oper
 
 func applyDayBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "start", "startofday":
+	case startKeyword, startOfDayKeyword:
 		return operationResult{startOfDay(date, loc), nil}, true
-	case "end", "endofday":
+	case endKeyword, endOfDayKeyword:
 		return operationResult{endOfDay(date, loc), nil}, true
 	default:
 		return operationResult{}, false
@@ -287,9 +287,9 @@ func applyDayBoundaryOps(date time.Time, op string, loc *time.Location) (operati
 
 func applyWeekBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "startofweek":
+	case startOfWeekKeyword:
 		return operationResult{startOfWeek(date, loc), nil}, true
-	case "endofweek":
+	case endOfWeekKeyword:
 		return operationResult{endOfWeek(date, loc), nil}, true
 	default:
 		return operationResult{}, false
@@ -298,9 +298,9 @@ func applyWeekBoundaryOps(date time.Time, op string, loc *time.Location) (operat
 
 func applyMonthBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "startofmonth":
+	case startOfMonthKeyword:
 		return operationResult{startOfMonth(date, loc), nil}, true
-	case "endofmonth":
+	case endOfMonthKeyword:
 		return operationResult{endOfMonth(date, loc), nil}, true
 	default:
 		return operationResult{}, false
@@ -309,13 +309,13 @@ func applyMonthBoundaryOps(date time.Time, op string, loc *time.Location) (opera
 
 func applyYearQuarterBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "startofyear":
+	case startOfYearKeyword:
 		return operationResult{startOfYear(date, loc), nil}, true
-	case "endofyear":
+	case endOfYearKeyword:
 		return operationResult{endOfYear(date, loc), nil}, true
-	case "startofquarter":
+	case startOfQuarterKeyword:
 		return operationResult{startOfQuarter(date, loc), nil}, true
-	case "endofquarter":
+	case endOfQuarterKeyword:
 		return operationResult{endOfQuarter(date, loc), nil}, true
 	default:
 		return operationResult{}, false
@@ -324,17 +324,17 @@ func applyYearQuarterBoundaryOps(date time.Time, op string, loc *time.Location) 
 
 func applyTimeBoundaryOps(date time.Time, op string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "startofhour":
+	case startOfHourKeyword:
 		return operationResult{startOfHour(date, loc), nil}, true
-	case "endofhour":
+	case endOfHourKeyword:
 		return operationResult{endOfHour(date, loc), nil}, true
-	case "startofminute":
+	case startOfMinuteKeyword:
 		return operationResult{startOfMinute(date, loc), nil}, true
-	case "endofminute":
+	case endOfMinuteKeyword:
 		return operationResult{endOfMinute(date, loc), nil}, true
-	case "startofsecond":
+	case startOfSecondKeyword:
 		return operationResult{startOfSecond(date, loc), nil}, true
-	case "endofsecond":
+	case endOfSecondKeyword:
 		return operationResult{endOfSecond(date, loc), nil}, true
 	default:
 		return operationResult{}, false
@@ -342,12 +342,9 @@ func applyTimeBoundaryOps(date time.Time, op string, loc *time.Location) (operat
 }
 
 func applyValueOperation(date time.Time, op, value string, loc *time.Location) (operationResult, bool) {
-	const (
-		dayOp  = "day"
-		timeOp = "time"
-	)
+	const timeOp = "time"
 	switch op {
-	case dayOp:
+	case dayKeyword:
 		if value == "" {
 			return operationResult{date, nil}, true
 		}
@@ -370,10 +367,10 @@ func applyValueOperation(date time.Time, op, value string, loc *time.Location) (
 
 func applyTransformOperation(date time.Time, op, value string, loc *time.Location) (operationResult, bool) {
 	switch op {
-	case "round":
+	case roundKeyword:
 		t, err := roundDate(date, value, loc)
 		return operationResult{t, err}, true
-	case "trunc":
+	case truncKeyword:
 		t, err := truncateDate(date, value, loc)
 		return operationResult{t, err}, true
 	default:
@@ -492,30 +489,30 @@ func endOfQuarter(t time.Time, _ *time.Location) time.Time {
 
 func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) {
 	switch unit {
-	case "day", "":
+	case dayKeyword, "":
 		// Round to nearest day
 		hour := t.Hour()
 		if hour >= NoonHour {
 			return startOfDay(t.AddDate(0, 0, 1), loc), nil
 		}
 		return startOfDay(t, loc), nil
-		
-	case "hour":
+
+	case hourKeyword:
 		// Round to nearest hour
 		minute := t.Minute()
 		if minute >= HalfMinute {
 			return t.Add(time.Hour).Truncate(time.Hour), nil
 		}
 		return t.Truncate(time.Hour), nil
-		
-	case "minute":
+
+	case minuteKeyword:
 		// Round to nearest minute
 		second := t.Second()
 		if second >= HalfSecond {
 			return t.Add(time.Minute).Truncate(time.Minute), nil
 		}
 		return t.Truncate(time.Minute), nil
-		
+
 	default:
 		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)
 	}
@@ -523,11 +520,11 @@ func roundDate(t time.Time, unit string, loc *time.Location) (time.Time, error) 
 
 func truncateDate(t time.Time, unit string, loc *time.Location) (time.Time, error) {
 	switch unit {
-	case "day", "":
+	case dayKeyword, "":
 		return startOfDay(t, loc), nil
-	case "hour":
+	case hourKeyword:
 		return t.Truncate(time.Hour), nil
-	case "minute":
+	case minuteKeyword:
 		return t.Truncate(time.Minute), nil
 	default:
 		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidUnit, unit)

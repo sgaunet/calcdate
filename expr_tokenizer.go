@@ -132,8 +132,8 @@ func (t *Tokenizer) handlePlusMinusToken(ch byte, startPos int) error {
 }
 
 func (t *Tokenizer) handleDotToken(startPos int) error {
-	if t.pos+2 < len(t.input) && t.input[t.pos:t.pos+3] == "..." {
-		t.tokens = append(t.tokens, Token{Type: TokenRange, Value: "...", Pos: startPos})
+	if t.pos+2 < len(t.input) && t.input[t.pos:t.pos+3] == rangeOperator {
+		t.tokens = append(t.tokens, Token{Type: TokenRange, Value: rangeOperator, Pos: startPos})
 		t.pos += 3
 		return nil
 	}
@@ -397,15 +397,15 @@ func (t *Tokenizer) readKeywordOrDate() error {
 	
 	// Check if it's a keyword
 	keywords := []string{
-		"today", "now", "yesterday", "tomorrow",
-		"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-		"start", "end", "startOf", "endOf",
-		"startOfDay", "endOfDay", "startOfWeek", "endOfWeek",
-		"startOfMonth", "endOfMonth", "startOfYear", "endOfYear",
-		"startOfQuarter", "endOfQuarter",
-		"startOfHour", "endOfHour", "startOfMinute", "endOfMinute", "startOfSecond", "endOfSecond",
-		"round", "trunc", "day", "time", "month", "year", "week", "quarter",
-		"hour", "minute", "second",
+		todayKeyword, nowKeyword, yesterdayKeyword, tomorrowKeyword,
+		mondayKeyword, tuesdayKeyword, wednesdayKeyword, thursdayKeyword, fridayKeyword, saturdayKeyword, sundayKeyword,
+		startKeyword, endKeyword, "startOf", "endOf",
+		startOfDayKeyword, endOfDayKeyword, startOfWeekKeyword, endOfWeekKeyword,
+		startOfMonthKeyword, endOfMonthKeyword, startOfYearKeyword, endOfYearKeyword,
+		startOfQuarterKeyword, endOfQuarterKeyword,
+		startOfHourKeyword, endOfHourKeyword, startOfMinuteKeyword, endOfMinuteKeyword, startOfSecondKeyword, endOfSecondKeyword,
+		roundKeyword, truncKeyword, dayKeyword, "time", "month", "year", "week", "quarter",
+		hourKeyword, minuteKeyword, "second",
 	}
 	
 	for _, kw := range keywords {
