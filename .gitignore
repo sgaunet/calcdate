@@ -2,3 +2,4 @@ dist
 log
 .vagrant
 /calcdate
+/govulncheck.sarif
