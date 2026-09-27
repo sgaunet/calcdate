@@ -38,27 +38,38 @@ changelog:
       - '^docs:'
       - '^test:'
 
-brews:
-  - homepage: 'https://github.com/sgaunet/calcdate'
-    description: 'A modern command-line utility for date calculations and operations with intuitive expression syntax'
-    directory: Formula
+# Homebrew cask publishing (replaces the deprecated `brews:` block; casks are
+# what GoReleaser supports going forward)
+homebrew_casks:
+  - name: calcdate
+    homepage: 'https://github.com/sgaunet/calcdate'
+    description: 'Command-line utility for date calculations with intuitive expression syntax'
+
+    # Tap repository directory (casks live in Casks/, not Formula/)
+    directory: Casks
+
+    # Command name users invoke, mapped from the artifact name.
+    binaries:
+      - calcdate
+
+    # Download URL of the release artifact.
+    url:
+      template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
+
+    # Strip the Gatekeeper quarantine xattr so the installed binary can run.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}"]
+          end
+
     commit_author:
       name: sgaunet
       email: 1552102+sgaunet@users.noreply.github.com
+
     repository:
       owner: sgaunet
       name: homebrew-tools
       # Token with 'repo' scope is required for pushing to a different repository
       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
-    url_template: 'https://github.com/sgaunet/calcdate/releases/download/{{ .Tag }}/{{ .ArtifactName }}'
-    install: |
-      bin.install "{{ .ArtifactName }}" => "calcdate"
-      chmod 0555, bin/"calcdate"
-      output = Utils.safe_popen_read(bin/"calcdate", "completion", "bash")
-      (bash_completion/"calcdate").write output
-      output = Utils.safe_popen_read(bin/"calcdate", "completion", "zsh")
-      (zsh_completion/"_calcdate").write output
-      output = Utils.safe_popen_read(bin/"calcdate", "completion", "fish")
-      (fish_completion/"calcdate.fish").write output
-    test: |
-      system "#{bin}/calcdate", "-v"
